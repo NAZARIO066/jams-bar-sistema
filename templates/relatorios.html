@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% block title %}Relatórios{% endblock %}
+{% block page_title %}📈 Relatórios Avançados{% endblock %}
+{% block content %}
+<div class="flex gap-2 mb-4 flex-wrap">
+  <button onclick="trocarAba('vendas')" class="btn btn-secondary active" id="tab-vendas">Vendas Gerais</button>
+  <button onclick="trocarAba('produto')" class="btn btn-secondary" id="tab-produto">Por Produto</button>
+  <button onclick="trocarAba('categoria')" class="btn btn-secondary" id="tab-categoria">Por Categoria</button>
+  <button onclick="trocarAba('garcom')" class="btn btn-secondary" id="tab-garcom">Por Garçom</button>
+  <button onclick="trocarAba('fluxo')" class="btn btn-secondary" id="tab-fluxo">Fluxo de Caixa</button>
+  <button onclick="trocarAba('sangrias')" class="btn btn-secondary" id="tab-sangrias">Sangrias</button>
+  <button onclick="trocarAba('suprimentos')" class="btn btn-secondary" id="tab-suprimentos">Suprimentos</button>
+</div>
+
+<div class="flex gap-2 mb-4 flex-wrap">
+  <button onclick="carregar('hoje')" class="btn btn-secondary">Hoje</button>
+  <button onclick="carregar('ontem')" class="btn btn-secondary">Ontem</button>
+  <button onclick="carregar('semana')" class="btn btn-secondary">Semana</button>
+  <button onclick="carregar('mes')" class="btn btn-secondary">Mês</button>
+  <div class="flex items-center gap-2 ml-auto">
+    <input id="ini" type="date" class="px-3 py-2 rounded">
+    <input id="fim" type="date" class="px-3 py-2 rounded">
+    <button onclick="custom()" class="btn btn-primary">Aplicar</button>
+  </div>
+</div>
+
+<div id="totais" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4"></div>
+
+<!-- ABA: Vendas Gerais -->
+<div id="aba-vendas">
+  <div class="card overflow-auto mb-4">
+    <h3 class="font-semibold mb-3">Vendas no Período</h3>
+    <table class="table">
+      <thead><tr><th>#</th><th>Data</th><th>Tipo</th><th>Mesa</th><th>Garçom</th><th>Forma</th><th class="text-right">Total</th></tr></thead>
+      <tbody id="lista-v"></tbody>
+    </table>
+  </div>
+  <div class="grid md:grid-cols-2 gap-4">
+    <div class="card overflow-auto">
+      <h3 class="font-semibold mb-3">🪑 Por Mesa</h3>
+      <table class="table">
+        <thead><tr><th>Mesa</th><th>Pedidos</th><th class="text-right">Total</th></tr></thead>
+        <tbody id="lista-m"></tbody>
+      </table>
+    </div>
+    <div class="card overflow-auto">
+      <h3 class="font-semibold mb-3">🏆 Produtos (30d)</h3>
+      <table class="table">
+        <thead><tr><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Total</th></tr></thead>
+        <tbody id="lista-p"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ABA: Por Produto -->
+<div id="aba-produto" class="hidden">
+  <div class="card overflow-auto">
+    <h3 class="font-semibold mb-3">Vendas por Produto</h3>
+    <table class="table">
+      <thead><tr><th>Produto</th><th>Categoria</th><th class="text-right">Qtd</th><th class="text-right">Total</th><th class="text-right">Preço Médio</th></tr></thead>
+      <tbody id="lista-produto"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA: Por Categoria -->
+<div id="aba-categoria" class="hidden">
+  <div class="card overflow-auto">
+    <h3 class="font-semibold mb-3">Vendas por Categoria</h3>
+    <table class="table">
+      <thead><tr><th>Categoria</th><th class="text-right">Qtd Itens</th><th class="text-right">Total</th><th class="text-right">% do Total</th></tr></thead>
+      <tbody id="lista-categoria"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA: Por Garçom -->
+<div id="aba-garcom" class="hidden">
+  <div class="card overflow-auto">
+    <h3 class="font-semibold mb-3">Vendas por Garçom</h3>
+    <table class="table">
+      <thead><tr><th>Garçom</th><th class="text-right">Vendas</th><th class="text-right">Total</th><th class="text-right">Ticket Médio</th></tr></thead>
+      <tbody id="lista-garcom"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA: Fluxo de Caixa -->
+<div id="aba-fluxo" class="hidden">
+  <div class="card overflow-auto">
+    <h3 class="font-semibold mb-3">Fluxo de Caixa</h3>
+    <table class="table">
+      <thead><tr><th>Data</th><th>Entradas</th><th>Saídas</th><th class="text-right">Saldo</th></tr></thead>
+      <tbody id="lista-fluxo"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA: Sangrias -->
+<div id="aba-sangrias" class="hidden">
+  <div class="card overflow-auto">
+    <h3 class="font-semibold mb-3">Sangrias no Período</h3>
+    <table class="table">
+      <thead><tr><th>Data</th><th>Valor</th><th>Motivo</th><th>Usuário</th></tr></thead>
+      <tbody id="lista-sangrias"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ABA: Suprimentos -->
+<div id="aba-suprimentos" class="hidden">
+  <div class="card overflow-auto">
+    <h3 class="font-semibold mb-3">Suprimentos no Período</h3>
+    <table class="table">
+      <thead><tr><th>Data</th><th>Valor</th><th>Motivo</th><th>Usuário</th></tr></thead>
+      <tbody id="lista-suprimentos"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let abaAtual = 'vendas';
+let chartPeriodo = 'hoje';
+
+function calcPeriodo(periodo) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
+  if (periodo === 'hoje') return { inicio: hoje, fim: hoje, label: 'Hoje' };
+  if (periodo === 'ontem') return { inicio: ontem, fim: ontem, label: 'Ontem' };
+  if (periodo === 'semana') {
+    const seg = new Date(hoje); seg.setDate(seg.getDate() - seg.getDay() + (seg.getDay()===0?-6:1));
+    return { inicio: seg, fim: hoje, label: 'Semana' };
+  }
+  if (periodo === 'mes') {
+    const mes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return { inicio: mes, fim: hoje, label: 'Mês' };
+  }
+  return { inicio: new Date(periodo.inicio), fim: new Date(periodo.fim), label: periodo.label || 'Custom' };
+}
+function qs(dt) { return dt.toISOString().split('T')[0]; }
+
+function trocarAba(aba) {
+  abaAtual = aba;
+  ['vendas','produto','categoria','garcom','fluxo','sangrias','suprimentos'].forEach(a => {
+    document.getElementById('aba-'+a).classList.toggle('hidden', a!==aba);
+    document.getElementById('tab-'+a)?.classList.toggle('btn-primary', a===aba);
+    document.getElementById('tab-'+a)?.classList.toggle('btn-secondary', a!==aba);
+  });
+  carregar(chartPeriodo);
+}
+
+async function carregar(periodo) {
+  chartPeriodo = periodo;
+  if (abaAtual === 'vendas') await carregarVendas(periodo);
+  else if (abaAtual === 'produto') await carregarProduto(periodo);
+  else if (abaAtual === 'categoria') await carregarCategoria(periodo);
+  else if (abaAtual === 'garcom') await carregarGarcom(periodo);
+  else if (abaAtual === 'fluxo') await carregarFluxo(periodo);
+  else if (abaAtual === 'sangrias') await carregarSangrias(periodo);
+  else if (abaAtual === 'suprimentos') await carregarSuprimentos(periodo);
+}
+
+function params(inicio, fim) {
+  return 'inicio=' + qs(inicio) + '&fim=' + qs(fim);
+}
+
+async function carregarVendas(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/vendas?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  document.getElementById('totais').innerHTML = `
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Período</div><div class="text-lg font-bold">${p.label}</div></div>
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Total Vendido</div><div class="text-2xl font-bold text-brand-500">${fmtMoeda(d.totais.total)}</div></div>
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Qtd Vendas</div><div class="text-2xl font-bold">${d.totais.qtd}</div></div>
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Ticket Médio</div><div class="text-2xl font-bold">${fmtMoeda(d.totais.ticket)}</div></div>`;
+  document.getElementById('lista-v').innerHTML = d.vendas.map(v => `
+    <tr>
+      <td>#${v.id}</td><td>${fmtData(v.data)}</td>
+      <td><span class="badge ${v.tipo==='mesa'?'badge-blue':'badge-gray'}">${v.tipo}</span></td>
+      <td>${v.mesa||'—'}</td><td>${v.garcom||v.funcionario||'—'}</td><td>${v.forma_pagamento||'—'}</td>
+      <td class="text-right font-bold text-brand-500">${fmtMoeda(v.valor_total)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="text-slate-400 text-center py-6">Sem vendas</td></tr>';
+  const rm = await fetch('/api/relatorios/mesas');
+  const ms = await rm.json();
+  document.getElementById('lista-m').innerHTML = ms.map(m => `<tr><td>Mesa ${String(m.numero).padStart(2,'0')}</td><td>${m.pedidos||0}</td><td class="text-right font-bold">${fmtMoeda(m.total||0)}</td></tr>`).join('');
+  const rp = await fetch('/api/relatorios/produtos');
+  const ps = await rp.json();
+  document.getElementById('lista-p').innerHTML = ps.mais_vendidos.map(p => `<tr><td>${p.nome}</td><td class="text-right">${p.qtd}</td><td class="text-right">${fmtMoeda(p.total)}</td></tr>`).join('') || '<tr><td colspan="3" class="text-slate-400">—</td></tr>';
+}
+
+async function carregarProduto(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/vendas_produto?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  const totalItens = d.reduce((s,i) => s + i.qtd, 0);
+  document.getElementById('totais').innerHTML = `
+    <div class="card col-span-2"><div class="text-xs text-slate-400 uppercase">Total Produtos</div><div class="text-2xl font-bold text-brand-500">${totalItens} itens vendidos</div></div>`;
+  document.getElementById('lista-produto').innerHTML = d.map(p => `
+    <tr><td class="font-medium">${p.nome}</td><td>${p.categoria||'—'}</td><td class="text-right">${p.qtd}</td><td class="text-right font-bold">${fmtMoeda(p.total)}</td><td class="text-right">${p.qtd > 0 ? fmtMoeda(p.total/p.qtd) : fmtMoeda(0)}</td></tr>
+  `).join('') || '<tr><td colspan="5" class="text-slate-400 text-center py-6">Sem dados</td></tr>';
+}
+
+async function carregarCategoria(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/vendas_categoria?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  const totalGeral = d.reduce((s,c) => s + c.total, 0);
+  document.getElementById('totais').innerHTML = `
+    <div class="card col-span-2"><div class="text-xs text-slate-400 uppercase">Total Categorias</div><div class="text-2xl font-bold text-brand-500">${d.length} categorias</div></div>`;
+  document.getElementById('lista-categoria').innerHTML = d.map(c => `
+    <tr><td class="font-medium">${c.categoria}</td><td class="text-right">${c.qtd}</td><td class="text-right font-bold">${fmtMoeda(c.total)}</td><td class="text-right">${totalGeral > 0 ? ((c.total/totalGeral)*100).toFixed(1) : 0}%</td></tr>
+  `).join('') || '<tr><td colspan="4" class="text-slate-400 text-center py-6">Sem dados</td></tr>';
+}
+
+async function carregarGarcom(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/vendas_garcom?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  document.getElementById('totais').innerHTML = `
+    <div class="card col-span-2"><div class="text-xs text-slate-400 uppercase">Total Garçons</div><div class="text-2xl font-bold text-brand-500">${d.length} garçons</div></div>`;
+  document.getElementById('lista-garcom').innerHTML = d.map(g => `
+    <tr><td class="font-medium">${g.garcom}</td><td class="text-right">${g.pedidos}</td><td class="text-right font-bold">${fmtMoeda(g.total)}</td><td class="text-right">${g.pedidos > 0 ? fmtMoeda(g.total/g.pedidos) : fmtMoeda(0)}</td></tr>
+  `).join('') || '<tr><td colspan="4" class="text-slate-400 text-center py-6">Sem dados</td></tr>';
+}
+
+async function carregarFluxo(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/fluxo_caixa?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  document.getElementById('totais').innerHTML = `
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Entradas</div><div class="text-2xl font-bold text-green-400">${fmtMoeda(d.vendas.total)}</div></div>
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Saídas</div><div class="text-2xl font-bold text-red-400">${fmtMoeda(d.sangrias.total)}</div></div>
+    <div class="card col-span-2"><div class="text-xs text-slate-400 uppercase">Saldo</div><div class="text-2xl font-bold text-brand-500">${fmtMoeda(d.saldo)}</div></div>`;
+  document.getElementById('lista-fluxo').innerHTML = `<tr><td>${qs(p.inicio)} a ${qs(p.fim)}</td><td class="text-green-400 font-bold">${fmtMoeda(d.vendas.total)}</td><td class="text-red-400 font-bold">${fmtMoeda(d.sangrias.total)}</td><td class="text-right font-bold text-brand-500">${fmtMoeda(d.saldo)}</td></tr>`;
+}
+
+async function carregarSangrias(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/sangrias?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  const total = d.reduce((s,i) => s + i.valor, 0);
+  document.getElementById('totais').innerHTML = `
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Total Sangrias</div><div class="text-2xl font-bold text-red-400">${fmtMoeda(total)}</div></div>
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Qtd Sangrias</div><div class="text-2xl font-bold">${d.length}</div></div>`;
+  document.getElementById('lista-sangrias').innerHTML = d.map(s => `
+    <tr><td>${fmtData(s.data_hora)}</td><td class="text-red-400 font-bold">${fmtMoeda(s.valor)}</td><td>${s.motivo||'—'}</td><td>${s.usuario||'—'}</td></tr>
+  `).join('') || '<tr><td colspan="4" class="text-slate-400 text-center py-6">Sem sangrias</td></tr>';
+}
+
+async function carregarSuprimentos(periodo) {
+  const p = calcPeriodo(periodo);
+  const r = await fetch('/api/relatorios/suprimentos?' + params(p.inicio, p.fim));
+  const d = await r.json();
+  const total = d.reduce((s,i) => s + i.valor, 0);
+  document.getElementById('totais').innerHTML = `
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Total Suprimentos</div><div class="text-2xl font-bold text-green-400">${fmtMoeda(total)}</div></div>
+    <div class="card"><div class="text-xs text-slate-400 uppercase">Qtd Suprimentos</div><div class="text-2xl font-bold">${d.length}</div></div>`;
+  document.getElementById('lista-suprimentos').innerHTML = d.map(s => `
+    <tr><td>${fmtData(s.data_hora)}</td><td class="text-green-400 font-bold">${fmtMoeda(s.valor)}</td><td>${s.motivo||'—'}</td><td>${s.usuario||'—'}</td></tr>
+  `).join('') || '<tr><td colspan="4" class="text-slate-400 text-center py-6">Sem suprimentos</td></tr>';
+}
+
+function custom() {
+  const ini = document.getElementById('ini').value;
+  const fim = document.getElementById('fim').value;
+  if (!ini || !fim) return toast('Informe início e fim', 'error');
+  const p = { inicio: ini, fim: fim, label: `${ini} a ${fim}` };
+  carregar(p);
+}
+
+carregar('hoje');
+</script>
+{% endblock %}

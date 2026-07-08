@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Garçons{% endblock %}
+{% block page_title %}🧑‍🍳 Garçons / Atendentes{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  <div class="flex gap-2 text-sm">
+    <span class="badge badge-green" id="k-ativos">0 Ativos</span>
+  </div>
+  {% if session.get('usuario_nivel') == 'admin' %}
+  <button onclick="abrir()" class="btn btn-primary">+ Novo Garçom</button>
+  {% endif %}
+</div>
+<div class="card overflow-auto">
+  <table class="table">
+    <thead><tr><th>Nome</th><th>Telefone</th><th>Comissão</th><th>Status</th><th></th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table>
+</div>
+
+<div id="modal" class="hidden modal-bg">
+  <div class="modal-box">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 id="titulo" class="font-bold text-lg">Garçom</h3>
+      <button onclick="fechar()" class="text-slate-400">✕</button>
+    </div>
+    <form class="p-4 space-y-3" onsubmit="salvar(event)">
+      <input type="hidden" id="gid">
+      <div><label class="text-sm">Nome *</label><input id="nome" required class="w-full px-3 py-2 rounded"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="text-sm">Telefone</label><input id="tel" class="w-full px-3 py-2 rounded"></div>
+        <div><label class="text-sm">Comissão (%)</label><input id="comissao" type="number" step="0.01" value="0" class="w-full px-3 py-2 rounded"></div>
+      </div>
+      <label class="flex items-center gap-2"><input id="ativo" type="checkbox" checked> <span class="text-sm">Ativo</span></label>
+      <button class="btn btn-primary w-full">Salvar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function listar() {
+  const r = await fetch('/api/garcons');
+  const lista = await r.json();
+  document.getElementById('k-ativos').textContent = lista.filter(g=>g.ativo).length + ' Ativos';
+  document.getElementById('lista').innerHTML = lista.map(g => `
+    <tr>
+      <td class="font-medium">${g.nome}</td>
+      <td>${g.telefone||'—'}</td>
+      <td>${g.comissao > 0 ? g.comissao + '%' : '—'}</td>
+      <td>${g.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-red">Inativo</span>'}</td>
+      <td class="text-right">
+        <button onclick="editar(${g.id})" class="text-blue-400 mr-2">✏</button>
+        <button onclick="excluir(${g.id})" class="text-red-400">🗑</button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" class="text-slate-400 text-center py-6">Nenhum garçom cadastrado</td></tr>';
+}
+
+function abrir() {
+  document.getElementById('gid').value = '';
+  document.getElementById('nome').value = '';
+  document.getElementById('tel').value = '';
+  document.getElementById('comissao').value = '0';
+  document.getElementById('ativo').checked = true;
+  document.getElementById('titulo').textContent = 'Novo Garçom';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function editar(id) {
+  const r = await fetch('/api/garcons');
+  const lista = await r.json();
+  const g = lista.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('gid').value = g.id;
+  document.getElementById('nome').value = g.nome;
+  document.getElementById('tel').value = g.telefone || '';
+  document.getElementById('comissao').value = g.comissao || 0;
+  document.getElementById('ativo').checked = !!g.ativo;
+  document.getElementById('titulo').textContent = 'Editar Garçom';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function salvar(e) {
+  e.preventDefault();
+  const gid = document.getElementById('gid').value;
+  const dados = {
+    nome: document.getElementById('nome').value,
+    telefone: document.getElementById('tel').value,
+    comissao: parseFloat(document.getElementById('comissao').value) || 0,
+    ativo: document.getElementById('ativo').checked
+  };
+  const url = gid ? `/api/garcons/${gid}` : '/api/garcons';
+  const method = gid ? 'PUT' : 'POST';
+  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
+  const d = await r.json();
+  if (d.ok) { toast('Salvo!'); fechar(); listar(); } else toast(d.erro || 'Erro', 'error');
+}
+
+async function excluir(id) {
+  if (!confirm('Desativar garçom?')) return;
+  await fetch('/api/garcons/' + id, {method: 'DELETE'});
+  toast('Desativado'); listar();
+}
+
+function fechar() { document.getElementById('modal').classList.add('hidden'); }
+listar();
+</script>
+{% endblock %}

@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="pt-br" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}JAM'S BURGUER{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: { 500:'#D4AF37', 600:'#C5A028', 700:'#B8860B' },
+          ink:   { 900:'#0D0D0D', 800:'#1A1A1A', 700:'#222222', 600:'#2A2A2A' }
+        }
+      }
+    }
+  }
+</script>
+</head>
+<body style="background:#0D0D0D;color:#FFFFFF;min-height:100vh;">
+
+{% if session.get('usuario_id') %}
+<div class="flex min-h-screen">
+  <!-- Sidebar Premium -->
+  <aside class="w-64 sidebar flex flex-col">
+    <div class="p-5" style="border-bottom:1px solid rgba(212,175,55,0.1);">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0" id="logo-wrapper" style="background:linear-gradient(135deg,#D4AF37,#B8860B);box-shadow:0 0 20px rgba(212,175,55,0.25);">
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}?t={{ logo_timestamp }}" class="w-full h-full object-cover" alt="Logo JAM'S">
+        </div>
+        <div>
+          <div class="sidebar-brand">JAM'S BURGUER</div>
+          <div class="sidebar-sub">Lanchonete e Conveniência</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="flex-1 p-3 space-y-1 text-sm">
+      <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'dashboard' else '' }}"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="{{ url_for('mesas') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'mesas' else '' }}"><span class="nav-icon">🪑</span> Mesas</a>
+      <a href="{{ url_for('vendas') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'vendas' else '' }}"><span class="nav-icon">💰</span> PDV / Vendas</a>
+      <a href="{{ url_for('produtos') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'produtos' else '' }}"><span class="nav-icon">📦</span> Produtos</a>
+      <a href="{{ url_for('estoque') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'estoque' else '' }}"><span class="nav-icon">📋</span> Estoque</a>
+      <a href="{{ url_for('garcons') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'garcons' else '' }}"><span class="nav-icon">🧑‍🍳</span> Garçons</a>
+      <a href="{{ url_for('caixa') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'caixa' else '' }}"><span class="nav-icon">💵</span> Caixa</a>
+      <a href="{{ url_for('clientes') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'clientes' else '' }}"><span class="nav-icon">👤</span> Clientes / Fiado</a>
+      <a href="{{ url_for('contas_pagar') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'contas_pagar' else '' }}"><span class="nav-icon">💰</span> Contas a Pagar</a>
+      <a href="{{ url_for('relatorios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'relatorios' else '' }}"><span class="nav-icon">📈</span> Relatórios</a>
+      {% if session.get('usuario_nivel') == 'admin' %}
+        <div style="border-top:1px solid rgba(212,175,55,0.08);margin:.5rem 0;padding-top:.5rem;">
+          <a href="{{ url_for('usuarios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'usuarios' else '' }}"><span class="nav-icon">👥</span> Usuários</a>
+          <a href="{{ url_for('auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'auditoria' else '' }}"><span class="nav-icon">🔍</span> Auditoria</a>
+        </div>
+      {% endif %}
+    </nav>
+
+    <div class="p-3" style="border-top:1px solid rgba(212,175,55,0.1);">
+      <div class="flex items-center gap-3 p-2 rounded-lg" style="background:rgba(212,175,55,0.05);">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm" style="background:linear-gradient(135deg,#D4AF37,#B8860B);color:#111;">
+          {{ (session.get('usuario_nome') or 'U')[0]|upper }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate" style="color:#FFFFFF;">{{ session.get('usuario_nome') }}</div>
+          <div class="text-xs" style="color:#999;">{{ 'Administrador' if session.get('usuario_nivel')=='admin' else 'Funcionário' }}</div>
+        </div>
+        {% if session.get('usuario_nivel') == 'admin' %}
+          <button onclick="abrirConfig()" class="hover-rotate" style="color:#D4AF37;font-size:1rem;cursor:pointer;background:none;border:none;" title="Configurações">⚙️</button>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" style="color:#666;font-size:1.1rem;cursor:pointer;text-decoration:none;" title="Sair">⎋</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-auto" style="background:#0D0D0D;">
+    <header class="sticky top-0 z-10 header-bar px-6 py-3 flex items-center justify-between">
+      <h1 class="header-title">{% block page_title %}{% endblock %}</h1>
+      <div class="flex items-center gap-3">
+        <div id="alertas-btn" class="relative cursor-pointer text-lg" title="Alertas" style="color:#D4AF37;">🔔
+          <span id="alertas-count" class="hidden absolute -top-1 -right-1 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center" style="background:#dc2626;">0</span>
+        </div>
+        <button id="theme-toggle" class="text-lg" title="Alternar tema" style="background:none;border:none;cursor:pointer;">🌙</button>
+        <div class="text-sm" id="relogio" style="color:#999;font-family:'Inter',monospace;">--:--:--</div>
+      </div>
+    </header>
+    <div class="p-6">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="mb-4 p-3 rounded-lg animate-fade-in" style="{% if cat=='success' %}background:rgba(22,163,74,0.12);color:#4ade80;border:1px solid rgba(22,163,74,0.2);{% else %}background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);{% endif %}">
+              {{ msg }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<!-- Modal Scanner -->
+<div id="scanner-modal" class="hidden modal-bg">
+  <div class="modal-box" style="max-width:28rem">
+    <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid rgba(212,175,55,0.1);">
+      <h3 class="font-bold text-lg" style="color:#D4AF37;">📷 Ler Código de Barras</h3>
+      <button onclick="fecharScanner()" style="color:#999;cursor:pointer;background:none;border:none;font-size:1.2rem;">✕</button>
+    </div>
+    <div class="p-4">
+      <div id="scanner-video" style="width:100%;border-radius:.5rem;overflow:hidden"></div>
+      <p class="text-xs mt-3 text-center" style="color:#666;">Aponte a câmera para o código de barras</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Alertas -->
+<div id="alertas-modal" class="hidden modal-bg" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-box" style="max-width:28rem;max-height:80vh;overflow:auto">
+    <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid rgba(212,175,55,0.1);">
+      <h3 class="font-bold text-lg" style="color:#D4AF37;">🔔 Alertas</h3>
+      <button onclick="document.getElementById('alertas-modal').classList.add('hidden')" style="color:#999;cursor:pointer;background:none;border:none;font-size:1.2rem;">✕</button>
+    </div>
+    <div id="alertas-content" class="p-4 space-y-2 text-sm"></div>
+  </div>
+</div>
+
+<!-- Modal Configurações -->
+<div id="config-modal" class="hidden modal-bg" onclick="if(event.target===this)fecharConfig()">
+  <div class="modal-box" style="max-width:28rem">
+    <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid rgba(212,175,55,0.1);">
+      <h3 class="font-bold text-lg" style="color:#D4AF37;">⚙️ Configurações</h3>
+      <button onclick="fecharConfig()" style="color:#999;cursor:pointer;background:none;border:none;font-size:1.2rem;">✕</button>
+    </div>
+    <div class="p-4 space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-2" style="color:#D6D6D6;">Logo do Sistema</label>
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0" id="config-logo-preview" style="background:linear-gradient(135deg,#D4AF37,#B8860B);">
+            {% if logo_timestamp %}
+              <img src="/static/uploads/logo.png?t={{ logo_timestamp }}" class="w-full h-full object-cover" id="preview-img">
+            {% else %}
+              <span class="text-2xl" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🍷</span>
+            {% endif %}
+          </div>
+          <div class="text-sm" style="color:#999;">
+            <p>Formatos: PNG, JPG, GIF, SVG, WebP</p>
+            <p>Tamanho recomendado: 200x200px</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <label class="btn btn-primary cursor-pointer">
+            📁 Selecionar Imagem
+            <input type="file" id="logo-input" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp" class="hidden" onchange="enviarLogo(this)">
+          </label>
+          <button onclick="removerLogo()" class="btn btn-secondary">🗑 Remover</button>
+        </div>
+        <div id="logo-status" class="mt-2 text-sm"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  // Relógio
+  setInterval(() => {
+    const el = document.getElementById('relogio');
+    if (el) el.textContent = new Date().toLocaleTimeString('pt-BR');
+  }, 1000);
+
+  // Tema
+  const themeKey = 'bar-theme';
+  const saved = localStorage.getItem(themeKey) || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const tbtn = document.getElementById('theme-toggle');
+  if (tbtn) {
+    tbtn.textContent = saved === 'dark' ? '🌙' : '☀️';
+    tbtn.onclick = () => {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem(themeKey, next);
+      tbtn.textContent = next === 'dark' ? '🌙' : '☀️';
+    };
+  }
+
+  // Alertas polling
+  async function refreshAlertas() {
+    try {
+      const r = await fetch('/api/alertas');
+      const d = await r.json();
+      const c = document.getElementById('alertas-count');
+      const total = (d.criticos?.length || 0);
+      if (c) {
+        if (total > 0) { c.classList.remove('hidden'); c.textContent = total; }
+        else c.classList.add('hidden');
+      }
+      const content = document.getElementById('alertas-content');
+      if (content) {
+        let html = '';
+        (d.zerados || []).forEach(p => html += `<div class="p-3 rounded-lg" style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.2);color:#f87171;">🚨 <b>${p.nome}</b> - Produto indisponível</div>`);
+        (d.criticos || []).filter(p => p.estoque > 0).forEach(p => html += `<div class="p-3 rounded-lg" style="background:rgba(202,138,4,0.12);border:1px solid rgba(202,138,4,0.2);color:#fbbf24;">⚠ <b>${p.nome}</b> - Estoque crítico: ${p.estoque} (mín ${p.estoque_minimo})</div>`);
+        if (!html) html = '<div class="text-center py-6" style="color:#666;">✅ Nenhum alerta</div>';
+        content.innerHTML = html;
+      }
+    } catch(e) {}
+  }
+  refreshAlertas();
+  setInterval(refreshAlertas, 15000);
+  const ab = document.getElementById('alertas-btn');
+  if (ab) ab.onclick = () => document.getElementById('alertas-modal').classList.remove('hidden');
+
+  // Toast
+  window.toast = (msg, tipo='success') => {
+    const t = document.createElement('div');
+    t.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white animate-fade-in`;
+    t.style.background = tipo==='success' ? '#D4AF37' : '#dc2626';
+    t.style.color = tipo==='success' ? '#111' : '#fff';
+    t.style.fontWeight = '600';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  };
+  window.fmtMoeda = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  window.fmtData = s => s ? new Date(s).toLocaleString('pt-BR') : '';
+
+  // Scanner
+  let scanner = null;
+  window.abrirScanner = function(callbackFn) {
+    document.getElementById('scanner-modal').classList.remove('hidden');
+    if (!scanner) scanner = new Html5Qrcode("scanner-video");
+    Html5Qrcode.getCameras().then(cams => {
+      if (!cams || !cams.length) { alert('Nenhuma câmera encontrada'); return; }
+      const camId = cams.find(c => /back|traseira|environment/i.test(c.label))?.id || cams[0].id;
+      scanner.start(camId, { fps: 10, qrbox: { width: 320, height: 160 } },
+        (decoded) => { window.fecharScanner(); if (typeof callbackFn === 'function') callbackFn(decoded); },
+        () => {}
+      ).catch(e => alert('Erro ao abrir câmera: ' + e));
+    }).catch(e => alert('Erro: ' + e));
+  };
+  window.fecharScanner = function() {
+    document.getElementById('scanner-modal').classList.add('hidden');
+    if (scanner) { try { scanner.stop().then(() => { scanner.clear(); scanner = null; }); } catch(e) { scanner = null; } }
+  };
+
+  // Config / Logo
+  window.abrirConfig = function() {
+    document.getElementById('config-modal').classList.remove('hidden');
+  };
+  window.fecharConfig = function() {
+    document.getElementById('config-modal').classList.add('hidden');
+  };
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var cm = document.getElementById('config-modal');
+      var am = document.getElementById('alertas-modal');
+      if (cm && !cm.classList.contains('hidden')) cm.classList.add('hidden');
+      if (am && !am.classList.contains('hidden')) am.classList.add('hidden');
+    }
+  });
+  window.enviarLogo = async function(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const statusEl = document.getElementById('logo-status');
+    statusEl.innerHTML = '<span style="color:#999;">⏳ Enviando...</span>';
+    const fd = new FormData();
+    fd.append('logo', file);
+    try {
+      const r = await fetch('/api/config/logo', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.ok) {
+        statusEl.innerHTML = '<span style="color:#4ade80;">✅ Logo atualizada!</span>';
+        const t = d.timestamp;
+        const preview = document.getElementById('preview-img');
+        if (preview) {
+          preview.src = '/static/uploads/logo.png?t=' + t;
+        } else {
+          const container = document.getElementById('config-logo-preview');
+          container.innerHTML = '<img src="/static/uploads/logo.png?t=' + t + '" class="w-full h-full object-cover" id="preview-img">';
+        }
+        const wrapper = document.getElementById('logo-wrapper');
+        wrapper.innerHTML = '<img src="/static/uploads/logo.png?t=' + t + '" class="w-full h-full object-cover" alt="Logo">';
+        setTimeout(() => fecharConfig(), 1500);
+      } else {
+        statusEl.innerHTML = '<span style="color:#f87171;">❌ ' + (d.erro || 'Erro ao enviar') + '</span>';
+      }
+    } catch(e) {
+      statusEl.innerHTML = '<span style="color:#f87171;">❌ Erro de conexão</span>';
+    }
+    input.value = '';
+  };
+  window.removerLogo = async function() {
+    if (!confirm('Remover a logo do sistema?')) return;
+    const statusEl = document.getElementById('logo-status');
+    try {
+      const r = await fetch('/api/config/logo', { method: 'DELETE' });
+      const d = await r.json();
+      if (d.ok) {
+        statusEl.innerHTML = '<span style="color:#4ade80;">✅ Logo removida!</span>';
+        document.getElementById('config-logo-preview').innerHTML = '<span class="text-2xl" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🍷</span>';
+        document.getElementById('logo-wrapper').innerHTML = '<span class="text-2xl" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">🍷</span>';
+        setTimeout(() => fecharConfig(), 1500);
+      }
+    } catch(e) {
+      statusEl.innerHTML = '<span style="color:#f87171;">❌ Erro ao remover</span>';
+    }
+  };
+
+  // Nav-icon gold filter
+  document.querySelectorAll('.nav-icon').forEach(el => {
+    el.style.display = 'inline-block';
+  });
+
+  // Global fetch error handler
+  const _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    return _origFetch.call(this, url, opts).catch(function(err) {
+      console.warn('[fetch] erro em', url, err);
+      window.toast && window.toast('Erro de conexão: ' + (err.message || 'rede indisponível'), 'error');
+      throw err;
+    });
+  };
+
+  // CDN fallback check
+  window.addEventListener('load', function() {
+    if (typeof Chart === 'undefined') {
+      var el = document.createElement('div');
+      el.className = 'fixed top-0 left-0 right-0 z-[999] py-2 px-4 text-center text-sm font-bold';
+      el.style.cssText = 'background:#dc2626;color:#fff;';
+      el.textContent = '⚠ Chart.js não carregou. Gráficos podem não funcionar.';
+      document.body.prepend(el);
+    }
+    if (typeof Html5Qrcode === 'undefined') {
+      var el2 = document.createElement('div');
+      el2.className = 'fixed top-0 left-0 right-0 z-[999] py-2 px-4 text-center text-sm font-bold';
+      el2.style.cssText = 'background:#dc2626;color:#fff;top:2.5rem;';
+      el2.textContent = '⚠ html5-qrcode não carregou. Leitor de código de barras indisponível.';
+      document.body.prepend(el2);
+    }
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

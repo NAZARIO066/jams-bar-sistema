@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Caixa{% endblock %}
+{% block page_title %}💵 Caixa{% endblock %}
+{% block content %}
+<div id="caixa-area"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function load() {
+  const r = await fetch('/api/caixa/status');
+  const d = await r.json();
+  const area = document.getElementById('caixa-area');
+  if (!d.aberto) {
+    area.innerHTML = `
+      <div class="card max-w-lg mx-auto text-center">
+        <div class="text-5xl mb-3">💵</div>
+        <h2 class="text-xl font-bold mb-2">Caixa Fechado</h2>
+        <p class="text-slate-400 mb-4">Abra o caixa para começar a registrar vendas</p>
+        <div class="space-y-3 text-left">
+          <label class="text-sm">Valor inicial (R$)</label>
+          <input id="vini" type="number" step="0.01" value="0" class="w-full px-3 py-2 rounded">
+          <button onclick="abrir()" class="btn btn-success w-full">▶ Abrir Caixa</button>
+        </div>
+      </div>`;
+  } else {
+    const movs = await fetch('/api/caixa/movimentacoes').then(r=>r.json());
+    const totalSup = movs.filter(m=>m.tipo==='suprimento').reduce((s,m)=>s+m.valor,0);
+    const totalSang = movs.filter(m=>m.tipo==='sangria').reduce((s,m)=>s+m.valor,0);
+    area.innerHTML = `
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div class="card">
+          <h3 class="font-semibold mb-3">Caixa Aberto</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-slate-400">Abertura:</span><span>${fmtData(d.caixa.abertura)}</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Valor inicial:</span><span>${fmtMoeda(d.caixa.valor_inicial)}</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Suprimentos:</span><span class="text-green-400">+ ${fmtMoeda(totalSup)}</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Sangrias:</span><span class="text-red-400">- ${fmtMoeda(totalSang)}</span></div>
+            <div class="flex justify-between text-2xl font-bold border-t border-ink-700 pt-2 mt-2"><span>Vendas hoje:</span><span class="text-brand-500">${fmtMoeda(d.vendas_hoje.total)}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-slate-400">Qtd vendas:</span><span>${d.vendas_hoje.qtd}</span></div>
+            <div class="flex justify-between text-lg font-bold border-t border-ink-700 pt-2 mt-2"><span>Saldo estimado:</span><span class="text-brand-500">${fmtMoeda(d.caixa.valor_inicial + totalSup - totalSang + d.vendas_hoje.total)}</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="font-semibold mb-3">Fechar Caixa</h3>
+          <div class="space-y-3">
+            <div><label class="text-sm">Valor em caixa (conferido)</label><input id="vfin" type="number" step="0.01" class="w-full px-3 py-2 rounded"></div>
+            <div><label class="text-sm">Observação</label><textarea id="obs" class="w-full px-3 py-2 rounded" rows="2"></textarea></div>
+            <button onclick="fechar()" class="btn btn-danger w-full">⏹ Fechar Caixa</button>
+          </div>
+        </div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
+        <div class="card">
+          <h3 class="font-semibold mb-3 text-green-400">📥 Suprimento</h3>
+          <div class="flex gap-2">
+            <input id="sup-valor" type="number" step="0.01" placeholder="Valor" class="flex-1 px-3 py-2 rounded">
+            <input id="sup-motivo" placeholder="Motivo" class="flex-1 px-3 py-2 rounded">
+            <button onclick="suprimento()" class="btn btn-success">Registrar</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="font-semibold mb-3 text-red-400">📤 Sangria</h3>
+          <div class="flex gap-2">
+            <input id="sang-valor" type="number" step="0.01" placeholder="Valor" class="flex-1 px-3 py-2 rounded">
+            <input id="sang-motivo" placeholder="Motivo" class="flex-1 px-3 py-2 rounded">
+            <button onclick="sangria()" class="btn btn-danger">Registrar</button>
+          </div>
+        </div>
+      </div>
+      ${movs.length > 0 ? `
+      <div class="card overflow-auto">
+        <h3 class="font-semibold mb-3">Movimentações do Caixa</h3>
+        <table class="table">
+          <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Valor</th><th>Motivo</th><th>Usuário</th></tr></thead>
+          <tbody>
+            ${movs.map(m => `
+              <tr>
+                <td class="text-xs">${fmtData(m.data_hora)}</td>
+                <td>${m.tipo==='suprimento'?'<span class="badge badge-green">Suprimento</span>':'<span class="badge badge-red">Sangria</span>'}</td>
+                <td class="font-bold ${m.tipo==='suprimento'?'text-green-400':'text-red-400'}">${m.tipo==='suprimento'?'+ ':'- '}${fmtMoeda(m.valor)}</td>
+                <td>${m.motivo||'—'}</td>
+                <td>${m.usuario||'—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}`;
+  }
+}
+
+async function abrir() {
+  const v = parseFloat(document.getElementById('vini').value) || 0;
+  const r = await fetch('/api/caixa/abrir', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({valor_inicial: v})});
+  const d = await r.json();
+  if (d.ok) { toast('Caixa aberto!'); load(); } else toast(d.erro || 'Erro', 'error');
+}
+
+async function fechar() {
+  if (!confirm('Fechar o caixa?')) return;
+  const v = parseFloat(document.getElementById('vfin').value) || 0;
+  const obs = document.getElementById('obs').value;
+  const r = await fetch('/api/caixa/fechar', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({valor_final: v, observacao: obs})});
+  const d = await r.json();
+  if (d.ok) {
+    let msg = `Caixa fechado! Total: ${fmtMoeda(d.total)} em ${d.qtd} vendas`;
+    if (d.diferenca !== 0) msg += ` | Diferença: ${fmtMoeda(d.diferenca)}`;
+    toast(msg);
+    if (d.diferenca !== 0) alert(`⚠ ATENÇÃO: Diferença de ${fmtMoeda(d.diferenca)} no caixa!\nValor esperado: ${fmtMoeda(d.esperado)}\nValor informado: ${fmtMoeda(d.valor_final)}`);
+    load();
+  } else toast(d.erro || 'Erro', 'error');
+}
+
+async function suprimento() {
+  const v = parseFloat(document.getElementById('sup-valor').value) || 0;
+  const m = document.getElementById('sup-motivo').value;
+  if (v <= 0) return toast('Valor inválido', 'error');
+  const r = await fetch('/api/caixa/suprimento', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({valor: v, motivo: m})});
+  const d = await r.json();
+  if (d.ok) { toast('Suprimento registrado!'); load(); } else toast(d.erro || 'Erro', 'error');
+}
+
+async function sangria() {
+  const v = parseFloat(document.getElementById('sang-valor').value) || 0;
+  const m = document.getElementById('sang-motivo').value;
+  if (v <= 0) return toast('Valor inválido', 'error');
+  if (!confirm(`Registrar sangria de ${fmtMoeda(v)}?`)) return;
+  const r = await fetch('/api/caixa/sangria', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({valor: v, motivo: m})});
+  const d = await r.json();
+  if (d.ok) { toast('Sangria registrada!'); load(); } else toast(d.erro || 'Erro', 'error');
+}
+
+load();
+setInterval(load, 15000);
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JAM'S BURGUER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+
+  <!-- Golden Particles -->
+  {% for i in range(14) %}
+  <div class="login-particle" style="left: {{ (i * 7.2 + 3) % 100 }}%; top: {{ (i * 11 + 7) % 90 + 5 }}%; animation: floatParticle {{ 6 + (i % 4) * 2 }}s linear {{ i * 1.2 }}s infinite; width: {{ [2,3,4,5][i % 4] }}px; height: {{ [2,3,4,5][i % 4] }}px;"></div>
+  {% endfor %}
+
+  <!-- Glow behind logo -->
+  <div class="login-glow-bg"></div>
+
+  <!-- Login Container -->
+  <div class="w-full max-w-sm" style="animation: loginFadeIn 1s ease-out;">
+    <div class="text-center mb-8">
+      <!-- Logo 40% maior -->
+      <div style="animation: logoReveal 1.2s ease-out 0.2s both;">
+        <div class="inline-flex w-28 h-28 rounded-[1.25rem] items-center justify-center text-5xl overflow-hidden"
+             style="background: linear-gradient(135deg, #D4AF37 0%, #B8860B 50%, #D4AF37 100%); box-shadow: 0 0 30px rgba(212,175,55,0.3), 0 0 60px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.4); animation: goldenPulse 3s ease-in-out infinite;" id="login-logo">
+          <img src="{{ url_for('static', filename='uploads/logo.png') }}" class="w-full h-full object-cover" alt="JAM'S BURGUER">
+        </div>
+      </div>
+
+      <!-- Título Premium -->
+      <h1 class="login-title mt-5 mb-1">JAM'S BURGUER</h1>
+      <p class="login-subtitle">Lanchonete e Conveniência</p>
+    </div>
+
+    <!-- Card Glassmorphism -->
+    <div class="login-card">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="mb-4 p-3 rounded-lg text-sm" style="background:rgba(220,38,38,0.15);color:#f87171;border:1px solid rgba(220,38,38,0.3);">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="post" class="space-y-5">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <!-- Usuário -->
+        <div>
+          <label class="block text-xs font-medium mb-1.5" style="color:#D6D6D6;letter-spacing:0.05em;">USUÁRIO</label>
+          <div class="relative">
+            <svg class="login-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input name="login" required autofocus placeholder="Digite seu usuário" class="login-input">
+          </div>
+        </div>
+
+        <!-- Senha -->
+        <div>
+          <label class="block text-xs font-medium mb-1.5" style="color:#D6D6D6;letter-spacing:0.05em;">SENHA</label>
+          <div class="relative">
+            <svg class="login-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input name="senha" type="password" required placeholder="Digite sua senha" class="login-input">
+          </div>
+        </div>
+
+        <!-- Botão ENTRAR -->
+        <button type="submit" class="login-btn">ENTRAR</button>
+      </form>
+
+      <div class="mt-5 text-center" style="color:#666;font-size:0.7rem;letter-spacing:0.05em;">
+        <span style="color:#D4AF37;">admin</span> / <span style="color:#D4AF37;">Admin@2026#Jam's</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

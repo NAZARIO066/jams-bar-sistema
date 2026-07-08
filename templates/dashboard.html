@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}📊 Dashboard em Tempo Real{% endblock %}
+{% block content %}
+<div id="dash" class="space-y-6">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Faturamento Hoje</div><div id="kpi-fat-dia" class="text-2xl font-bold mt-1">R$ 0,00</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Faturamento Mês</div><div id="kpi-fat-mes" class="text-2xl font-bold mt-1">R$ 0,00</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Pedidos Hoje</div><div id="kpi-pedidos" class="text-2xl font-bold mt-1">0</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Ticket Médio</div><div id="kpi-ticket" class="text-2xl font-bold mt-1">R$ 0,00</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Mesas Ocupadas</div><div id="kpi-m-ocup" class="text-2xl font-bold mt-1 text-orange-400">0</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Mesas Livres</div><div id="kpi-m-liv" class="text-2xl font-bold mt-1 text-green-400">0</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Mesas Reservadas</div><div id="kpi-m-res" class="text-2xl font-bold mt-1 text-purple-400">0</div></div>
+    <div class="card"><div class="text-slate-400 text-xs uppercase">Estoque Crítico</div><div id="kpi-est" class="text-2xl font-bold mt-1 text-red-400">0</div></div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+    <div class="card">
+      <h3 class="font-semibold mb-3">📈 Vendas por Hora (hoje)</h3>
+      <canvas id="chart-hora" height="120"></canvas>
+    </div>
+    <div class="card">
+      <h3 class="font-semibold mb-3">📅 Vendas últimos 7 dias</h3>
+      <canvas id="chart-7dias" height="120"></canvas>
+    </div>
+    <div class="card">
+      <h3 class="font-semibold mb-3">🏆 Produtos Mais Vendidos (hoje)</h3>
+      <div id="top-produtos" class="space-y-2"></div>
+    </div>
+    <div class="card">
+      <h3 class="font-semibold mb-3">🪑 Ocupação das Mesas</h3>
+      <canvas id="chart-ocup" height="120"></canvas>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let chartHora, chart7, chartOcup;
+async function loadDash() {
+  const r = await fetch('/api/dashboard');
+  const d = await r.json();
+  document.getElementById('kpi-fat-dia').textContent = fmtMoeda(d.faturamento_dia);
+  document.getElementById('kpi-fat-mes').textContent = fmtMoeda(d.faturamento_mes);
+  document.getElementById('kpi-pedidos').textContent = d.total_pedidos;
+  document.getElementById('kpi-ticket').textContent = fmtMoeda(d.ticket_medio);
+  document.getElementById('kpi-m-ocup').textContent = d.mesas_ocupadas;
+  document.getElementById('kpi-m-liv').textContent = d.mesas_livres;
+  document.getElementById('kpi-m-res').textContent = d.mesas_reservadas;
+  document.getElementById('kpi-est').textContent = d.estoque_critico;
+
+  const top = document.getElementById('top-produtos');
+  top.innerHTML = (d.produtos_top || []).length === 0
+    ? '<div class="text-slate-400 text-sm">Sem vendas hoje</div>'
+    : d.produtos_top.map((p, i) => `
+      <div class="flex items-center gap-3 p-2 rounded bg-ink-700">
+        <div class="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-xs font-bold">${i+1}</div>
+        <div class="flex-1">
+          <div class="text-sm font-medium">${p.nome}</div>
+          <div class="text-xs text-slate-400">${p.qtd} un · ${fmtMoeda(p.total)}</div>
+        </div>
+      </div>
+    `).join('');
+
+  const ctx1 = document.getElementById('chart-hora').getContext('2d');
+  if (chartHora) chartHora.destroy();
+  chartHora = new Chart(ctx1, {
+    type: 'bar',
+    data: { labels: (d.vendas_hora || []).map(v => v.hora + 'h'),
+            datasets: [{ label: 'Vendas (R$)', data: (d.vendas_hora || []).map(v => v.total), backgroundColor: '#D4AF37' }] },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { ticks: { color:'#BDBDBD' } }, x: { ticks: { color:'#BDBDBD' } } } }
+  });
+
+  const ctx2 = document.getElementById('chart-7dias').getContext('2d');
+  if (chart7) chart7.destroy();
+  chart7 = new Chart(ctx2, {
+    type: 'line',
+    data: { labels: (d.vendas_7dias || []).map(v => v.dia),
+            datasets: [{ label: 'Faturamento', data: (d.vendas_7dias || []).map(v => v.total), borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.15)', fill: true, tension: .3 }] },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { ticks: { color:'#BDBDBD' } }, x: { ticks: { color:'#BDBDBD' } } } }
+  });
+
+  const ctx3 = document.getElementById('chart-ocup').getContext('2d');
+  if (chartOcup) chartOcup.destroy();
+  const oc = d.ocupacao || [];
+  chartOcup = new Chart(ctx3, {
+    type: 'doughnut',
+    data: { labels: oc.map(o => o.status), datasets: [{ data: oc.map(o => o.c), backgroundColor: ['#D4AF37', '#16a34a', '#9333ea', '#f59e0b'] }] },
+    options: { responsive: true, plugins: { legend: { labels: { color:'#BDBDBD' } } } }
+  });
+}
+loadDash();
+setInterval(loadDash, 8000);
+</script>
+{% endblock %}

@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %}Mesas{% endblock %}
+{% block page_title %}🪑 Gestão de Mesas{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div class="flex gap-2 text-sm flex-wrap">
+    <span class="badge badge-green">● Disponíveis</span>
+    <span class="badge" style="background:#ea580c33;color:#fb923c">● Ocupadas</span>
+    <span class="badge" style="background:#9333ea33;color:#c084fc">● Reservadas</span>
+    <span class="badge badge-gray">● Fechando</span>
+  </div>
+  <div class="flex gap-2">
+    <select id="filtro-garcom" onchange="loadMesas()" class="px-3 py-2 rounded text-sm">
+      <option value="">Todos os garçons</option>
+    </select>
+    <button onclick="loadMesas()" class="btn btn-secondary">🔄 Atualizar</button>
+  </div>
+</div>
+<div id="grid-mesas" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-3"></div>
+
+<div id="modal" class="hidden modal-bg">
+  <div class="modal-box max-w-lg">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 id="modal-titulo" class="font-bold text-lg">Mesa</h3>
+      <button onclick="fecharModal()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div id="modal-corpo" class="p-4"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let mesaAtual = null;
+let comandaAtual = null;
+let garcons = [];
+const cores = { disponivel:'mesa-disponivel', ocupada:'mesa-ocupada', reservada:'mesa-reservada', fechando:'mesa-fechando' };
+const labels = { disponivel:'Disponível', ocupada:'Ocupada', reservada:'Reservada', fechando:'Fechando' };
+
+async function loadGarcons() {
+  const r = await fetch('/api/garcons');
+  garcons = (await r.json()).filter(g => g.ativo);
+  const sel = document.getElementById('filtro-garcom');
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os garçons</option>' + garcons.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  sel.value = atual;
+}
+
+async function loadMesas() {
+  const r = await fetch('/api/mesas');
+  let mesas = await r.json();
+  const filtro = document.getElementById('filtro-garcom').value;
+  if (filtro) mesas = mesas.filter(m => String(m.garcom_id) === filtro);
+  const g = document.getElementById('grid-mesas');
+  g.innerHTML = mesas.map(m => `
+    <div class="mesa-card ${cores[m.status]||'mesa-disponivel'}" onclick="abrirMesa(${m.id})">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-base">${String(m.numero).padStart(2,'0')}</div>
+        <span class="badge text-xs ${m.status==='disponivel'?'badge-green':m.status==='ocupada'?'badge-yellow':m.status==='reservada'?'badge-blue':'badge-gray'}">${labels[m.status]}</span>
+      </div>
+      <div class="mt-1 text-xs text-slate-400">⏱ ${m.tempo||'--'}</div>
+      <div class="font-bold text-brand-500">${fmtMoeda(m.valor_atual)}</div>
+      ${m.garcom_nome ? `<div class="text-xs text-orange-300 truncate mt-1">🧑‍🍳 ${m.garcom_nome}</div>` : ''}
+      ${m.reservada_para ? `<div class="text-xs ${m.status==='ocupada'?'text-orange-300':'text-purple-300'} truncate">${m.status==='ocupada'?'👤':'📅'} ${m.reservada_para}</div>` : ''}
+    </div>
+  `).join('') || '<div class="col-span-full text-center text-slate-400 py-8">Nenhuma mesa encontrada</div>';
+}
+
+async function abrirMesa(id) {
+  const r = await fetch('/api/mesas');
+  const mesas = await r.json();
+  const mesa = mesas.find(m => m.id === id);
+  if (!mesa) return;
+  mesaAtual = mesa;
+  comandaAtual = mesa.comanda_id;
+
+  document.getElementById('modal-titulo').textContent = `Mesa ${String(mesa.numero).padStart(2,'0')} — ${labels[mesa.status]}`;
+  const corpo = document.getElementById('modal-corpo');
+  let html = '';
+
+  if (mesa.status === 'disponivel') {
+    html = `
+      <div class="space-y-3">
+        <p class="text-slate-300 text-sm">Mesa livre. Informe cliente e garçom.</p>
+        <div><label class="text-sm">Cliente (opcional)</label><input id="cli-nome" placeholder="Nome do cliente" class="w-full px-3 py-2 rounded"></div>
+        <div>
+          <label class="text-sm">Garçom *</label>
+          <select id="garcom-sel" class="w-full px-3 py-2 rounded" required>
+            <option value="">Selecione...</option>
+            ${garcons.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="abrirComanda(${mesa.id})" class="btn btn-primary">▶ Abrir Comanda</button>
+          <button onclick="reservar(${mesa.id})" class="btn btn-secondary">📅 Reservar</button>
+        </div>
+      </div>`;
+  } else if (mesa.status === 'reservada') {
+    html = `
+      <div class="space-y-3">
+        <p>Reservada para: <b>${mesa.reservada_para||'—'}</b></p>
+        <div>
+          <label class="text-sm">Garçom *</label>
+          <select id="garcom-sel" class="w-full px-3 py-2 rounded" required>
+            <option value="">Selecione...</option>
+            ${garcons.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="abrirComanda(${mesa.id})" class="btn btn-primary">▶ Abrir Comanda</button>
+          <button onclick="liberar(${mesa.id})" class="btn btn-secondary">Liberar</button>
+        </div>
+      </div>`;
+  } else if (mesa.status === 'ocupada' || mesa.status === 'fechando') {
+    const cr = await fetch('/api/comanda/' + comandaAtual);
+    const cd = await cr.json();
+    html = `
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span>Comanda #${cd.comanda.id} • Aberta em ${fmtData(cd.comanda.abertura)}</span>
+          <span>🧑‍🍳 ${cd.comanda.garcom_nome||'Sem garçom'}</span>
+        </div>
+        ${cd.comanda.observacao ? `<div class="text-xs text-slate-400 bg-ink-800 p-2 rounded">📋 ${cd.comanda.observacao}</div>` : ''}
+        <div class="card" style="padding:.5rem">
+          <table class="table text-sm">
+            <thead><tr><th>Produto</th><th>Qtd</th><th>Unit</th><th>Subtotal</th><th></th></tr></thead>
+            <tbody>
+              ${cd.itens.map(i => `<tr>
+                <td>${i.produto_nome}${i.observacao ? `<div class="text-xs text-slate-400 italic">📋 ${i.observacao}</div>` : ''}</td>
+                <td>${i.quantidade}</td>
+                <td>${fmtMoeda(i.preco_unitario)}</td>
+                <td>${fmtMoeda(i.subtotal)}</td>
+                <td><button onclick="removerItem(${i.id})" class="text-red-400 hover:text-red-300 text-xs">🗑</button></td>
+              </tr>`).join('') || '<tr><td colspan="5" class="text-slate-400">Nenhum item</td></tr>'}
+            </tbody>
+            <tfoot><tr><td colspan="3" class="font-bold">TOTAL</td><td colspan="2" class="font-bold text-brand-500 text-lg">${fmtMoeda(cd.total)}</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="border-t border-ink-700 pt-3">
+          <h4 class="font-semibold mb-2 text-sm">Adicionar produto</h4>
+          <div class="flex gap-2 mb-2">
+            <input id="busca-prod" placeholder="🔍 Buscar produto ou código de barras..." class="flex-1 px-3 py-2 rounded text-sm" onkeydown="if(event.key==='Enter')buscarProd()">
+            <button onclick="buscarProd()" class="btn btn-primary text-xs">Buscar</button>
+          </div>
+          <div id="result-busca" class="space-y-1 max-h-40 overflow-auto"></div>
+        </div>
+        <div class="border-t border-ink-700 pt-3 flex flex-wrap gap-2 justify-end">
+          <button onclick="reabrirComanda(${comandaAtual})" class="btn btn-secondary text-xs">🔄 Reabrir</button>
+          <button onclick="transferirMesa(${mesa.id})" class="btn btn-secondary text-xs">↗ Transferir</button>
+          <button onclick="trocarGarcom(${mesa.id})" class="btn btn-secondary text-xs">🧑‍🔄 Garçom</button>
+          <button onclick="cancelarComanda(${comandaAtual})" class="btn btn-danger text-xs">✖ Cancelar</button>
+          <button onclick="fecharMesa(${mesa.id})" class="btn btn-success">💰 Fechar Conta (${fmtMoeda(cd.total)})</button>
+        </div>
+      </div>`;
+  }
+  corpo.innerHTML = html;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function fecharModal() { document.getElementById('modal').classList.add('hidden'); mesaAtual = null; comandaAtual = null; }
+
+async function abrirComanda(id) {
+  const nome = (document.getElementById('cli-nome')?.value || '').trim();
+  const garcomId = document.getElementById('garcom-sel')?.value;
+  if (!garcomId) { toast('Selecione um garçom!', 'error'); return; }
+  const r = await fetch(`/api/mesas/${id}/abrir`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cliente_nome: nome, garcom_id: parseInt(garcomId)}) });
+  const d = await r.json();
+  if (d.ok) { toast(nome ? `Mesa aberta para ${nome}!` : 'Comanda aberta!'); fecharModal(); loadMesas(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+async function reservar(id) {
+  const nome = prompt('Nome da reserva:');
+  if (!nome) return;
+  const r = await fetch(`/api/mesas/${id}/reservar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nome}) });
+  const d = await r.json();
+  if (d.ok) { toast('Mesa reservada'); fecharModal(); loadMesas(); }
+}
+
+async function liberar(id) {
+  if (!confirm('Liberar mesa?')) return;
+  await fetch(`/api/mesas/${id}/liberar`, { method:'POST' });
+  toast('Mesa liberada'); fecharModal(); loadMesas();
+}
+
+async function reabrirComanda(comandaId) {
+  if (!confirm('Reabrir esta comanda?')) return;
+  const r = await fetch(`/api/comanda/${comandaId}/reabrir`, { method:'POST' });
+  const d = await r.json();
+  if (d.ok) { toast('Comanda reaberta!'); abrirMesa(mesaAtual.id); loadMesas(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+async function cancelarComanda(comandaId) {
+  if (!confirm('Cancelar esta comanda? TODOS os itens serão removidos.')) return;
+  const r = await fetch(`/api/comanda/${comandaId}/cancelar`, { method:'POST' });
+  const d = await r.json();
+  if (d.ok) { toast('Comanda cancelada'); fecharModal(); loadMesas(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+async function transferirMesa(mesaId) {
+  const r = await fetch('/api/mesas');
+  const mesas = await r.json();
+  const disponiveis = mesas.filter(m => m.status === 'disponivel');
+  if (!disponiveis.length) { toast('Nenhuma mesa disponível para transferir', 'error'); return;
+}
+  const num = prompt('Transferir para qual mesa?\n\nMesas disponíveis: ' + disponiveis.map(m=>m.numero).join(', '));
+  if (!num) return;
+  const destino = disponiveis.find(m => m.numero === parseInt(num));
+  if (!destino) { toast('Mesa não encontrada ou ocupada', 'error'); return; }
+  const r2 = await fetch(`/api/comanda/${comandaAtual}/transferir`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mesa_destino_id: destino.id}) });
+  const d = await r2.json();
+  if (d.ok) { toast(`Transferido para Mesa ${destino.numero}!`); fecharModal(); loadMesas(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+async function trocarGarcom(mesaId) {
+  const novoGarcom = prompt('Novo garçom:\n\n' + garcons.map(g=>`${g.id} - ${g.nome}`).join('\n'));
+  if (!novoGarcom) return;
+  const garcomId = parseInt(novoGarcom);
+  const g = garcons.find(x => x.id === garcomId);
+  if (!g) { toast('Garçom inválido', 'error'); return; }
+  const r = await fetch(`/api/comanda/${comandaAtual}/garcom`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({garcom_id: garcomId}) });
+  const d = await r.json();
+  if (d.ok) { toast(`Garçom alterado para ${g.nome}`); abrirMesa(mesaAtual.id); loadMesas(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+async function buscarProd() {
+  const q = document.getElementById('busca-prod').value.trim();
+  if (!q) return;
+  const r = await fetch('/api/buscar_produto?q=' + encodeURIComponent(q));
+  const lista = await r.json();
+  const cont = document.getElementById('result-busca');
+  if (!lista.length) { cont.innerHTML = '<div class="text-slate-400 text-sm">Nada encontrado</div>'; return; }
+  cont.innerHTML = lista.map(p => `
+    <div class="flex items-center justify-between p-2 rounded bg-ink-700 hover:bg-ink-600">
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-sm truncate">${p.nome}</div>
+        <div class="text-xs text-slate-400">${p.codigo_barras||'s/ código'} · Est: ${p.estoque} ${p.unidade}</div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="text-brand-500 font-bold text-sm">${fmtMoeda(p.preco)}</span>
+        <button onclick="addItem(${p.id})" class="btn btn-primary text-xs px-2">+ Add</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addItem(pid) {
+  const qtd = parseFloat(prompt('Quantidade:', '1') || '1');
+  if (!qtd) return;
+  const obs = prompt('Observação do item (opcional):') || '';
+  const r = await fetch(`/api/comanda/${comandaAtual}/adicionar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({produto_id: pid, quantidade: qtd, observacao: obs})
+  });
+  const d = await r.json();
+  if (d.ok) { toast('Item adicionado!'); abrirMesa(mesaAtual.id); loadMesas(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+async function removerItem(id) {
+  if (!confirm('Remover item?')) return;
+  await fetch('/api/comanda/item/' + id, { method:'DELETE' });
+  abrirMesa(mesaAtual.id); loadMesas();
+}
+
+async function fecharMesa(id) {
+  const desconto = parseFloat(prompt('Desconto (R$):', '0') || '0');
+  const forma = prompt('Forma de pagamento (Dinheiro/PIX/Crédito/Débito):', 'Dinheiro') || 'Dinheiro';
+  const r = await fetch(`/api/mesas/${id}/fechar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({desconto, forma_pagamento: forma})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast(`Venda #${d.venda_id} finalizada! Total: ${fmtMoeda(d.total)}`);
+    fecharModal(); loadMesas();
+  } else toast(d.erro || 'Erro', 'error');
+}
+
+loadGarcons();
+loadMesas();
+setInterval(loadMesas, 10000);
+</script>
+{% endblock %}

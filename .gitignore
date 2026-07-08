@@ -1,0 +1,36 @@
+# Banco de dados SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Arquivos de ambiente
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+flask_err.txt
+flask_out.txt
+
+# Pytest
+.pytest_cache/
+
+# Outros
+PARA INICIAR O DIA SEGUINTE.png

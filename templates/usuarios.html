@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Usuários{% endblock %}
+{% block page_title %}👥 Usuários{% endblock %}
+{% block content %}
+<div class="flex justify-end mb-4">
+  <button onclick="abrir()" class="btn btn-primary">+ Novo Usuário</button>
+</div>
+<div class="card overflow-auto">
+  <table class="table">
+    <thead><tr><th>Nome</th><th>Login</th><th>Nível</th><th>Status</th><th>Criado em</th><th></th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table>
+</div>
+
+<div id="modal" class="hidden modal-bg">
+  <div class="modal-box">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 id="titulo" class="font-bold text-lg">Usuário</h3>
+      <button onclick="fechar()" class="text-slate-400">✕</button>
+    </div>
+    <form class="p-4 space-y-3" onsubmit="salvar(event)">
+      <input type="hidden" id="uid">
+      <div><label class="text-sm">Nome</label><input id="nome" required class="w-full px-3 py-2 rounded"></div>
+      <div><label class="text-sm">Login</label><input id="login" required class="w-full px-3 py-2 rounded"></div>
+      <div><label class="text-sm">Senha <span id="snh-info" class="text-slate-500 text-xs"></span></label><input id="senha" class="w-full px-3 py-2 rounded"></div>
+      <div><label class="text-sm">Nível</label>
+        <select id="nivel" class="w-full px-3 py-2 rounded"><option value="funcionario">Funcionário</option><option value="admin">Administrador</option></select>
+      </div>
+      <label class="flex items-center gap-2"><input id="ativo" type="checkbox" checked> <span class="text-sm">Ativo</span></label>
+      <button class="btn btn-primary w-full">Salvar</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function listar() {
+  const r = await fetch('/api/usuarios');
+  const lista = await r.json();
+  document.getElementById('lista').innerHTML = lista.map(u => `
+    <tr>
+      <td class="font-medium">${u.nome}</td>
+      <td>${u.login}</td>
+      <td><span class="badge ${u.nivel==='admin'?'badge-blue':'badge-gray'}">${u.nivel}</span></td>
+      <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-red">Inativo</span>'}</td>
+      <td class="text-xs text-slate-400">${fmtData(u.criado_em)}</td>
+      <td class="text-right">
+        <button onclick="editar(${u.id})" class="text-blue-400 mr-2">✏</button>
+        <button onclick="excluir(${u.id})" class="text-red-400">🗑</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrir() {
+  document.getElementById('uid').value = '';
+  document.getElementById('nome').value = '';
+  document.getElementById('login').value = '';
+  document.getElementById('senha').value = '';
+  document.getElementById('nivel').value = 'funcionario';
+  document.getElementById('ativo').checked = true;
+  document.getElementById('titulo').textContent = 'Novo Usuário';
+  document.getElementById('snh-info').textContent = '';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function editar(id) {
+  const r = await fetch('/api/usuarios');
+  const lista = await r.json();
+  const u = lista.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('uid').value = u.id;
+  document.getElementById('nome').value = u.nome;
+  document.getElementById('login').value = u.login;
+  document.getElementById('senha').value = '';
+  document.getElementById('nivel').value = u.nivel;
+  document.getElementById('ativo').checked = !!u.ativo;
+  document.getElementById('titulo').textContent = 'Editar Usuário';
+  document.getElementById('snh-info').textContent = '(vazio = manter)';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function salvar(e) {
+  e.preventDefault();
+  const uid = document.getElementById('uid').value;
+  const dados = {
+    nome: document.getElementById('nome').value,
+    login: document.getElementById('login').value,
+    nivel: document.getElementById('nivel').value,
+    ativo: document.getElementById('ativo').checked
+  };
+  const senha = document.getElementById('senha').value;
+  if (senha) dados.senha = senha;
+  const url = uid ? `/api/usuarios/${uid}` : '/api/usuarios';
+  const method = uid ? 'PUT' : 'POST';
+  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
+  const d = await r.json();
+  if (d.ok) { toast('Salvo!'); fechar(); listar(); } else toast(d.erro || 'Erro', 'error');
+}
+
+async function excluir(id) {
+  if (!confirm('Desativar usuário?')) return;
+  const r = await fetch('/api/usuarios/' + id, {method: 'DELETE'});
+  const d = await r.json();
+  if (d.ok) { toast('Desativado'); listar(); } else toast(d.erro || 'Erro', 'error');
+}
+
+function fechar() { document.getElementById('modal').classList.add('hidden'); }
+listar();
+</script>
+{% endblock %}

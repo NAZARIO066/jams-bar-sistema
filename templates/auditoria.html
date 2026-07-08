@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Auditoria{% endblock %}
+{% block page_title %}🔍 Auditoria{% endblock %}
+{% block content %}
+<div class="card overflow-auto">
+  <table class="table">
+    <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th><th>IP</th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function listar() {
+  const r = await fetch('/api/auditoria');
+  const lista = await r.json();
+  document.getElementById('lista').innerHTML = lista.map(a => `
+    <tr>
+      <td class="text-xs">${fmtData(a.data_hora)}</td>
+      <td>${a.usuario_nome||'—'}</td>
+      <td><span class="badge badge-blue">${a.acao}</span></td>
+      <td class="text-xs text-slate-400">${a.detalhes||'—'}</td>
+      <td class="text-xs text-slate-400">${a.ip||'—'}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" class="text-slate-400 text-center py-6">Sem registros</td></tr>';
+}
+listar();
+setInterval(listar, 20000);
+</script>
+{% endblock %}

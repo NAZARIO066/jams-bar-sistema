@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% block title %}Clientes / Fiado{% endblock %}
+{% block page_title %}👤 Clientes & Conta Fiado{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+  <div class="card"><div class="text-xs text-slate-400 uppercase">Total Clientes</div><div id="k-total" class="text-2xl font-bold">0</div></div>
+  <div class="card"><div class="text-xs text-slate-400 uppercase">Com Fiado</div><div id="k-com-fiado" class="text-2xl font-bold text-yellow-400">0</div></div>
+  <div class="card"><div class="text-xs text-slate-400 uppercase">Total a Receber</div><div id="k-total-fiado" class="text-2xl font-bold text-red-400">R$ 0,00</div></div>
+</div>
+
+<div class="flex gap-2 mb-4 flex-wrap">
+  <input id="busca" placeholder="🔍 Buscar cliente (nome, CPF, telefone)..." class="flex-1 px-3 py-2 rounded" oninput="listar()">
+  <button onclick="abrir()" class="btn btn-primary">+ Novo Cliente</button>
+</div>
+
+<div class="card overflow-auto">
+  <table class="table">
+    <thead><tr><th>Nome</th><th>Telefone</th><th>CPF</th><th>Limite</th><th>Saldo Devedor</th><th>Vencimento</th><th>Status</th><th></th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table>
+</div>
+
+<!-- Modal cliente -->
+<div id="modal" class="hidden modal-bg">
+  <div class="modal-box">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 id="titulo" class="font-bold text-lg">Cliente</h3>
+      <button onclick="fechar()" class="text-slate-400">✕</button>
+    </div>
+    <form class="p-4 space-y-3" onsubmit="salvar(event)">
+      <input type="hidden" id="cid">
+      <div><label class="text-sm">Nome *</label><input id="nome" required class="w-full px-3 py-2 rounded"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="text-sm">Telefone</label><input id="tel" class="w-full px-3 py-2 rounded"></div>
+        <div><label class="text-sm">CPF</label><input id="cpf" class="w-full px-3 py-2 rounded"></div>
+      </div>
+      <div><label class="text-sm">Endereço</label><input id="end" class="w-full px-3 py-2 rounded"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="text-sm">Limite Fiado (R$)</label><input id="limite" type="number" step="0.01" value="0" class="w-full px-3 py-2 rounded"></div>
+        <div><label class="text-sm">Saldo Atual (R$)</label><input id="saldo" type="number" step="0.01" value="0" class="w-full px-3 py-2 rounded"></div>
+      </div>
+      <div><label class="text-sm">Observação</label><textarea id="obs" class="w-full px-3 py-2 rounded" rows="2"></textarea></div>
+      <button class="btn btn-primary w-full">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal detalhes / fiado -->
+<div id="modal-fiado" class="hidden modal-bg">
+  <div class="modal-box" style="max-width:36rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 id="f-titulo" class="font-bold text-lg">Cliente</h3>
+      <button onclick="fecharFiado()" class="text-slate-400">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div class="grid grid-cols-3 gap-3 text-sm">
+        <div><div class="text-slate-400 text-xs">Telefone</div><div id="f-tel">—</div></div>
+        <div><div class="text-slate-400 text-xs">CPF</div><div id="f-cpf">—</div></div>
+        <div><div class="text-slate-400 text-xs">Limite</div><div id="f-limite">R$ 0,00</div></div>
+      </div>
+      <div class="card text-center" style="padding:1rem">
+        <div class="text-xs text-slate-400 uppercase">Saldo Devedor</div>
+        <div id="f-saldo" class="text-3xl font-bold text-red-400">R$ 0,00</div>
+      </div>
+      <div class="border-t border-ink-700 pt-3">
+        <h4 class="font-semibold mb-2">💰 Registrar Pagamento</h4>
+        <div class="flex gap-2">
+          <input id="pg-valor" type="number" step="0.01" placeholder="Valor" class="flex-1 px-3 py-2 rounded">
+          <input id="pg-obs" placeholder="Observação" class="flex-1 px-3 py-2 rounded">
+          <button onclick="pagar()" class="btn btn-success">Pagar</button>
+        </div>
+      </div>
+      <div class="border-t border-ink-700 pt-3">
+        <h4 class="font-semibold mb-2">📜 Histórico</h4>
+        <div id="f-historico" class="space-y-1 text-sm max-h-64 overflow-auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let clienteFiadoId = null;
+
+async function listar() {
+  const q = document.getElementById('busca').value.toLowerCase();
+  const r = await fetch('/api/clientes');
+  const body = await r.json();
+  const lista = Array.isArray(body) ? body : body.data;
+  const total = body.total || lista.length;
+  const filt = lista.filter(c => c.nome.toLowerCase().includes(q) || (c.cpf||'').includes(q) || (c.telefone||'').includes(q));
+  document.getElementById('k-total').textContent = total;
+  const comFiado = lista.filter(c => c.saldo_devedor > 0);
+  document.getElementById('k-com-fiado').textContent = comFiado.length;
+  document.getElementById('k-total-fiado').textContent = fmtMoeda(comFiado.reduce((s,c) => s + c.saldo_devedor, 0));
+  document.getElementById('lista').innerHTML = filt.map(c => {
+    const excedeu = c.limite_fiado > 0 && c.saldo_devedor >= c.limite_fiado;
+    const st = c.status_fiado || 'normal';
+    const dias = (c.dias_vencimento !== undefined && c.dias_vencimento !== null) ? c.dias_vencimento : null;
+    const corBorda = st === 'vencido' ? 'border-l-4 border-red-500' :
+                     st === 'alerta' ? 'border-l-4 border-yellow-500' :
+                     st === 'atencao' ? 'border-l-4 border-purple-500' : '';
+    let corStatus;
+    if (st === 'vencido') corStatus = '<span class="badge" style="background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-weight:800;padding:.35rem .75rem;box-shadow:0 0 12px rgba(239,68,68,.7);text-shadow:0 1px 2px rgba(0,0,0,.4)">🔴 VENCIDO</span>';
+    else if (st === 'alerta') corStatus = '<span class="badge" style="background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#1c1917;font-weight:800;padding:.35rem .75rem;box-shadow:0 0 12px rgba(245,158,11,.6)">🟡 VENCE EM ' + (dias !== null ? dias : 5) + ' DIAS</span>';
+    else if (st === 'atencao') corStatus = '<span class="badge" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:800;padding:.35rem .75rem;box-shadow:0 0 12px rgba(168,85,247,.6);text-shadow:0 1px 2px rgba(0,0,0,.4)">🟣 VENCE EM ' + (dias !== null ? dias : 10) + ' DIAS</span>';
+    else if (c.saldo_devedor > 0) corStatus = '<span class="badge" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;font-weight:800;padding:.35rem .75rem;box-shadow:0 0 12px rgba(34,197,94,.6);text-shadow:0 1px 2px rgba(0,0,0,.4)">🟢 EM DIA</span>';
+    else corStatus = '<span class="badge" style="background:linear-gradient(135deg,#475569,#64748b);color:#fff;font-weight:700;padding:.35rem .75rem">SEM FIADO</span>';
+    return `
+    <tr class="${corBorda}">
+      <td class="font-medium">${c.nome} ${c.tem_vencido?'<span title="Bloqueado - tem fiado vencido">🚫</span>':''}</td>
+      <td>${c.telefone||'—'}</td>
+      <td class="text-xs">${c.cpf||'—'}</td>
+      <td>${c.limite_fiado>0?fmtMoeda(c.limite_fiado):'<span class="text-slate-400">—</span>'}</td>
+      <td><span class="${c.saldo_devedor>0?(excedeu?'text-red-400 font-bold':'font-bold'):'text-slate-400'}">${fmtMoeda(c.saldo_devedor)}</span></td>
+      <td>${c.proximo_vencimento ? '<span class="font-semibold">' + new Date(c.proximo_vencimento+'T00:00:00').toLocaleDateString('pt-BR') + '</span>' : '<span class="text-slate-400">—</span>'}</td>
+      <td>${corStatus}</td>
+      <td class="text-right whitespace-nowrap">
+        <button onclick="verFiado(${c.id})" class="text-yellow-400 mr-2" title="Fiado">💰</button>
+        <button onclick="editar(${c.id})" class="text-blue-400 mr-2" title="Editar">✏</button>
+        <button onclick="excluir(${c.id})" class="text-red-400" title="Desativar">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" class="text-slate-400 text-center py-6">Nenhum cliente</td></tr>';
+}
+
+function abrir() {
+  document.getElementById('cid').value = '';
+  document.getElementById('nome').value = '';
+  document.getElementById('tel').value = '';
+  document.getElementById('cpf').value = '';
+  document.getElementById('end').value = '';
+  document.getElementById('limite').value = 0;
+  document.getElementById('saldo').value = 0;
+  document.getElementById('obs').value = '';
+  document.getElementById('titulo').textContent = 'Novo Cliente';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function editar(id) {
+  const r = await fetch('/api/clientes');
+  const body = await r.json();
+  const lista = Array.isArray(body) ? body : body.data;
+  const c = lista.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('cid').value = c.id;
+  document.getElementById('nome').value = c.nome;
+  document.getElementById('tel').value = c.telefone || '';
+  document.getElementById('cpf').value = c.cpf || '';
+  document.getElementById('end').value = c.endereco || '';
+  document.getElementById('limite').value = c.limite_fiado;
+  document.getElementById('saldo').value = c.saldo_devedor;
+  document.getElementById('obs').value = c.observacao || '';
+  document.getElementById('titulo').textContent = 'Editar Cliente';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+async function salvar(e) {
+  e.preventDefault();
+  const cid = document.getElementById('cid').value;
+  const dados = {
+    nome: document.getElementById('nome').value,
+    telefone: document.getElementById('tel').value,
+    cpf: document.getElementById('cpf').value,
+    endereco: document.getElementById('end').value,
+    limite_fiado: parseFloat(document.getElementById('limite').value) || 0,
+    observacao: document.getElementById('obs').value
+  };
+  if (!cid) {
+    const r = await fetch('/api/clientes', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
+    const d = await r.json();
+    if (d.ok) { toast('Cliente cadastrado!'); fechar(); listar(); }
+    else toast(d.erro || 'Erro', 'error');
+  } else {
+    // update
+    await fetch('/api/clientes/' + cid, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
+    const novo_saldo = parseFloat(document.getElementById('saldo').value) || 0;
+    if (novo_saldo !== undefined) {
+      // ajuste manual via movimentação não implementado; só alerta
+    }
+    toast('Cliente atualizado!'); fechar(); listar();
+  }
+}
+
+async function excluir(id) {
+  if (!confirm('Desativar cliente?')) return;
+  await fetch('/api/clientes/' + id, {method:'DELETE'});
+  toast('Cliente desativado'); listar();
+}
+
+async function verFiado(id) {
+  clienteFiadoId = id;
+  const r = await fetch('/api/clientes/' + id + '/fiado');
+  const d = await r.json();
+  document.getElementById('f-titulo').textContent = `💰 ${d.cliente.nome}`;
+  document.getElementById('f-tel').textContent = d.cliente.telefone || '—';
+  document.getElementById('f-cpf').textContent = d.cliente.cpf || '—';
+  document.getElementById('f-limite').textContent = fmtMoeda(d.cliente.limite_fiado);
+  document.getElementById('f-saldo').textContent = fmtMoeda(d.cliente.saldo_devedor);
+  document.getElementById('f-saldo').className = 'text-3xl font-bold ' + (d.cliente.saldo_devedor > 0 ? 'text-red-400' : 'text-green-400');
+  document.getElementById('pg-valor').value = '';
+  document.getElementById('pg-obs').value = '';
+  const hist = document.getElementById('f-historico');
+  hist.innerHTML = d.movimentacoes.length === 0 ? '<div class="text-slate-400 text-center py-4">Sem movimentações</div>' :
+    d.movimentacoes.map(m => {
+      const corSt = m.status === 'vencido' ? 'border-red-500' :
+                    m.status === 'alerta' ? 'border-yellow-500' :
+                    m.status === 'atencao' ? 'border-purple-500' : 'border-transparent';
+      const vencTxt = m.tipo === 'compra' && m.data_vencimento ?
+        (m.status === 'vencido' ? `🔴 Venceu em ${new Date(m.data_vencimento+'T00:00:00').toLocaleDateString('pt-BR')}` :
+         m.status === 'alerta' ? `🟡 Vence em ${m.dias_vencimento}d (${new Date(m.data_vencimento+'T00:00:00').toLocaleDateString('pt-BR')})` :
+         m.status === 'atencao' ? `🟣 Vence em ${m.dias_vencimento}d (${new Date(m.data_vencimento+'T00:00:00').toLocaleDateString('pt-BR')})` :
+         `🟢 Vence em ${m.dias_vencimento}d (${new Date(m.data_vencimento+'T00:00:00').toLocaleDateString('pt-BR')})`) : '';
+      const saldoTxt = m.tipo === 'compra' && m.saldo < m.valor ? `<span class="text-xs text-green-400">(pago: ${fmtMoeda(m.valor_pago)})</span>` : '';
+      return `
+      <div class="flex items-center justify-between p-2 rounded bg-ink-700 border-l-4 ${corSt}">
+        <div>
+          <div class="text-xs text-slate-400">${fmtData(m.data_hora)}${m.venda_id?' • Venda #'+m.venda_id:''}</div>
+          <div class="text-sm">${m.observacao || (m.tipo==='compra'?'Compra fiado':'Pagamento')}</div>
+          ${vencTxt ? `<div class="text-xs">${vencTxt}</div>` : ''}
+        </div>
+        <div class="text-right">
+          <div class="font-bold ${m.tipo==='compra'?'text-red-400':'text-green-400'}">${m.tipo==='compra'?'+ ':'- '}${fmtMoeda(m.valor)} ${saldoTxt}</div>
+          <div class="text-xs text-slate-400">${m.usuario||'—'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  document.getElementById('modal-fiado').classList.remove('hidden');
+}
+
+async function pagar() {
+  const valor = parseFloat(document.getElementById('pg-valor').value) || 0;
+  const obs = document.getElementById('pg-obs').value;
+  if (valor <= 0) return toast('Valor inválido', 'error');
+  const r = await fetch(`/api/clientes/${clienteFiadoId}/pagamento`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({valor, observacao: obs})
+  });
+  const d = await r.json();
+  if (d.ok) { toast('Pagamento registrado!'); verFiado(clienteFiadoId); listar(); }
+  else toast(d.erro || 'Erro', 'error');
+}
+
+function fechar() { document.getElementById('modal').classList.add('hidden'); }
+function fecharFiado() { document.getElementById('modal-fiado').classList.add('hidden'); clienteFiadoId = null; }
+listar();
+</script>
+{% endblock %}

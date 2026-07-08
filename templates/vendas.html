@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}PDV{% endblock %}
+{% block page_title %}💰 PDV - Venda Direta{% endblock %}
+{% block content %}
+<div class="grid md:grid-cols-3 gap-4">
+  <div class="md:col-span-2 card">
+    <h3 class="font-semibold mb-3">Buscar produtos</h3>
+    <div class="flex gap-2 mb-3">
+      <input id="busca" placeholder="🔍 Nome, código ou categoria (Enter para buscar)" class="flex-1 px-3 py-2 rounded" onkeydown="if(event.key==='Enter')buscar()">
+      <button onclick="abrirScanner(cod => { document.getElementById('busca').value = cod; buscar(); })" class="btn btn-secondary">📷</button>
+      <button onclick="buscar()" class="btn btn-primary">Buscar</button>
+    </div>
+    <div id="resultados" class="grid sm:grid-cols-2 gap-2 max-h-96 overflow-auto"></div>
+    <div id="mais-vendidos" class="mt-4">
+      <h4 class="text-sm font-semibold text-slate-400 mb-2">🔥 Acesso Rápido — Mais Vendidos</h4>
+      <div id="mv-lista" class="grid sm:grid-cols-2 gap-2"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3 class="font-semibold mb-3">🧾 Carrinho</h3>
+    <div id="carrinho" class="space-y-1 text-sm min-h-32 mb-3"></div>
+    <div class="border-t border-ink-700 pt-3 space-y-2">
+      <div class="flex justify-between text-sm"><span>Subtotal</span><span id="sub">R$ 0,00</span></div>
+      <div class="flex justify-between items-center text-sm">
+        <span>Desconto</span>
+        <input id="desconto" type="number" step="0.01" value="0" class="w-24 px-2 py-1 rounded text-right" oninput="atualizar()">
+      </div>
+      <div class="flex justify-between items-center text-sm">
+        <span>Acrescimo</span>
+        <input id="acrescimo" type="number" step="0.01" value="0" class="w-24 px-2 py-1 rounded text-right" oninput="atualizar()">
+      </div>
+      <div class="flex justify-between text-xl font-bold text-brand-500 border-t border-ink-700 pt-2"><span>Total</span><span id="total">R$ 0,00</span></div>
+      <select id="forma" class="w-full px-3 py-2 rounded" onchange="toggleFiado()">
+        <option>Dinheiro</option><option>PIX</option><option>Crédito</option><option>Débito</option>
+        <option value="Fiado">📒 Fiado</option>
+      </select>
+      <div id="box-fiado" class="hidden">
+        <input id="cli-busca" placeholder="🔍 Buscar cliente..." class="w-full px-3 py-2 rounded mb-1" oninput="buscarCliente()">
+        <div id="cli-result" class="max-h-32 overflow-auto space-y-1 text-sm"></div>
+        <div id="cli-escolhido" class="hidden p-2 rounded bg-yellow-900/30 border border-yellow-700 text-sm"></div>
+        <input type="hidden" id="cli-id">
+        <div class="mt-2"><label class="text-xs text-slate-400">Prazo para pagamento (dias)</label>
+          <input id="dias-venc" type="number" min="1" value="30" class="w-full px-3 py-2 rounded text-sm">
+        </div>
+      </div>
+      <button onclick="finalizar()" id="btn-final" class="btn btn-success w-full" disabled>✅ Finalizar Venda</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let carrinho = [];
+
+async function buscar() {
+  const q = document.getElementById('busca').value.trim();
+  if (!q) return;
+  const r = await fetch('/api/buscar_produto?q=' + encodeURIComponent(q));
+  const lista = await r.json();
+  const cont = document.getElementById('resultados');
+  document.getElementById('mais-vendidos').classList.add('hidden');
+  if (!lista.length) { cont.innerHTML = '<div class="text-slate-400">Nenhum produto</div>'; return; }
+  cont.innerHTML = lista.map(p => `
+    <div class="p-2 rounded bg-ink-700 flex items-center justify-between">
+      <div>
+        <div class="font-medium text-sm">${p.nome}</div>
+        <div class="text-xs text-slate-400">Estoque: ${p.estoque} ${p.unidade}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-brand-500 font-bold">${fmtMoeda(p.preco)}</span>
+        <button onclick="add(${p.id},'${p.nome.replace(/'/g,"\\'")}',${p.preco},${p.estoque})" class="btn btn-primary text-xs" ${p.estoque<=0?'disabled':''}>+</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function carregarMaisVendidos() {
+  const r = await fetch('/api/produtos/mais_vendidos');
+  const lista = await r.json();
+  const cont = document.getElementById('mv-lista');
+  if (!lista.length) { cont.innerHTML = '<div class="text-slate-400 text-sm">Nenhum produto vendido ainda</div>'; return; }
+  cont.innerHTML = lista.map(p => `
+    <div class="p-2 rounded bg-ink-700 flex items-center justify-between">
+      <div>
+        <div class="font-medium text-sm">${p.nome}</div>
+        <div class="text-xs text-slate-400">${p.total_vendido} vendidos</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-brand-500 font-bold">${fmtMoeda(p.preco)}</span>
+        <button onclick="add(${p.id},'${p.nome.replace(/'/g,"\\'")}',${p.preco},${p.estoque})" class="btn btn-primary text-xs" ${p.estoque<=0?'disabled':''}>+</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function add(id, nome, preco, estoque) {
+  const obs = prompt('Observação do item (opcional):') || '';
+  const ex = carrinho.find(i => i.produto_id === id && i.observacao === obs);
+  if (ex) {
+    if (ex.quantidade + 1 > estoque) return toast('Sem estoque', 'error');
+    ex.quantidade++;
+  } else {
+    carrinho.push({produto_id: id, nome, preco, quantidade: 1, estoque, observacao: obs});
+  }
+  document.getElementById('busca').value = '';
+  document.getElementById('resultados').innerHTML = '';
+  render();
+}
+
+function render() {
+  const c = document.getElementById('carrinho');
+  c.innerHTML = carrinho.length === 0 ? '<div class="text-slate-400 text-center py-6">Carrinho vazio</div>' :
+    carrinho.map((i, idx) => `
+      <div class="flex items-center justify-between p-2 rounded bg-ink-700">
+        <div class="flex-1">
+          <div class="text-sm">${i.nome}</div>
+          <div class="text-xs text-slate-400">${fmtMoeda(i.preco)} cada</div>
+          ${i.observacao ? `<div class="text-xs text-orange-400 italic mt-0.5">📋 ${i.observacao}</div>` : ''}
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="qtd(${idx},-1)" class="px-2 py-1 rounded bg-ink-600">-</button>
+          <span class="w-8 text-center">${i.quantidade}</span>
+          <button onclick="qtd(${idx},1)" class="px-2 py-1 rounded bg-ink-600">+</button>
+          <button onclick="rem(${idx})" class="ml-1 text-red-400">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  atualizar();
+}
+
+function qtd(idx, d) {
+  const i = carrinho[idx];
+  const nq = i.quantidade + d;
+  if (nq <= 0) return carrinho.splice(idx, 1);
+  if (nq > i.estoque) return toast('Sem estoque', 'error');
+  i.quantidade = nq;
+  render();
+}
+function rem(idx) { carrinho.splice(idx, 1); render(); }
+
+function atualizar() {
+  const sub = carrinho.reduce((s, i) => s + i.preco * i.quantidade, 0);
+  const desc = parseFloat(document.getElementById('desconto').value) || 0;
+  const acrc = parseFloat(document.getElementById('acrescimo').value) || 0;
+  document.getElementById('sub').textContent = fmtMoeda(sub);
+  document.getElementById('total').textContent = fmtMoeda(Math.max(0, sub - desc + acrc));
+  document.getElementById('btn-final').disabled = carrinho.length === 0;
+}
+
+async function finalizar() {
+  if (!carrinho.length) return;
+  if (!confirm('Finalizar venda?')) return;
+  const desc = parseFloat(document.getElementById('desconto').value) || 0;
+  const acrc = parseFloat(document.getElementById('acrescimo').value) || 0;
+  const forma = document.getElementById('forma').value;
+  const cli_id = document.getElementById('cli-id').value || null;
+  if (forma === 'Fiado' && !cli_id) return toast('Selecione um cliente para fiado', 'error');
+  const r = await fetch('/api/venda/direta', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({itens: carrinho.map(i => ({produto_id: i.produto_id, quantidade: i.quantidade, observacao: i.observacao||''})), desconto: desc, acrescimo: acrc, forma_pagamento: forma, cliente_id: cli_id ? parseInt(cli_id) : null, dias_vencimento: parseInt(document.getElementById('dias-venc').value) || 30})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast(`Venda #${d.venda_id} finalizada! ${fmtMoeda(d.total)}`);
+    carrinho = []; document.getElementById('desconto').value = 0; document.getElementById('acrescimo').value = 0; document.getElementById('cli-id').value = ''; document.getElementById('cli-escolhido').classList.add('hidden'); render();
+  } else toast(d.erro || 'Erro', 'error');
+}
+
+function toggleFiado() {
+  const f = document.getElementById('forma').value;
+  document.getElementById('box-fiado').classList.toggle('hidden', f !== 'Fiado');
+}
+
+async function buscarCliente() {
+  const q = document.getElementById('cli-busca').value.trim();
+  const r = await fetch('/api/clientes/buscar?q=' + encodeURIComponent(q));
+  const lista = await r.json();
+  const cont = document.getElementById('cli-result');
+  cont.innerHTML = lista.length === 0 ? '<div class="text-slate-400 px-2 py-1">Nenhum cliente</div>' :
+    lista.map(c => {
+      const ex = c.limite_fiado > 0 && c.saldo_devedor >= c.limite_fiado;
+      return `<div onclick="escolherCliente(${c.id}, '${c.nome.replace(/'/g,"\\'")}', ${c.saldo_devedor}, ${c.limite_fiado})" class="p-2 rounded bg-ink-700 hover:bg-ink-600 cursor-pointer flex justify-between ${ex?'opacity-60':''}">
+        <div>
+          <div class="font-medium">${c.nome}</div>
+          <div class="text-xs text-slate-400">${c.telefone||''} ${c.cpf||''}</div>
+        </div>
+        <div class="text-right text-xs">
+          <div class="${c.saldo_devedor>0?'text-red-400':'text-slate-400'}">${fmtMoeda(c.saldo_devedor)}</div>
+          ${c.limite_fiado>0?`<div class="text-slate-500">lim ${fmtMoeda(c.limite_fiado)}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function escolherCliente(id, nome, saldo, limite) {
+  document.getElementById('cli-id').value = id;
+  document.getElementById('cli-escolhido').classList.remove('hidden');
+  document.getElementById('cli-escolhido').innerHTML = `📒 <b>${nome}</b> • Saldo: ${fmtMoeda(saldo)}${limite>0?' / Limite: '+fmtMoeda(limite):''} <button type="button" onclick="document.getElementById('cli-id').value='';document.getElementById('cli-escolhido').classList.add('hidden')" class="ml-2 text-red-400">✕</button>`;
+  document.getElementById('cli-result').innerHTML = '';
+  document.getElementById('cli-busca').value = '';
+}
+carregarMaisVendidos();
+render();
+</script>
+{% endblock %}
