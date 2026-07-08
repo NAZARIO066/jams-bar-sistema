@@ -373,16 +373,17 @@ table { color: var(--text); }
   border-radius: 0.75rem;
   background: #1A1A1A;
   border: 1px solid rgba(212, 175, 55, 0.2);
-  color: #D6D6D6;
+  color: #FFFFFF;
   font-size: 0.9rem;
   outline: none;
   transition: all 0.3s;
+  -webkit-text-fill-color: #FFFFFF;
 }
 .login-input:focus {
   border-color: #D4AF37;
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15), 0 0 15px rgba(212, 175, 55, 0.08);
 }
-.login-input::placeholder { color: #666; }
+.login-input::placeholder { color: #999999; }
 .login-input-icon {
   position: absolute;
   left: 0.85rem;
