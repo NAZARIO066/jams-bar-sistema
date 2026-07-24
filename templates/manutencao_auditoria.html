@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Manutenção — Auditoria{% endblock %}
+{% block page_title %}📋 Auditoria de Manutenção{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-lg font-bold" style="color:#D4AF37;">Histórico de Operações</h2>
+      <p class="text-sm" style="color:#999;">Registro técnico de operações de manutenção do sistema.</p>
+    </div>
+    <a href="/manutencao" class="btn btn-secondary">← Voltar</a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card mb-6">
+    <div class="flex items-center gap-3">
+      <button onclick="carregarAuditoria(0)" class="btn btn-primary" id="btn-carregar">📋 Carregar Registros</button>
+      <span class="text-sm" id="total-registros" style="color:#999;"></span>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="card">
+    <div id="auditoria-loading" class="hidden text-center py-4" style="color:#999;">⏳ Carregando registros...</div>
+    <div id="auditoria-vazio" class="hidden text-center py-8" style="color:#666;">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">📋</div>
+      <p>Nenhum registro de auditoria encontrado.</p>
+    </div>
+    <div id="auditoria-lista" class="hidden">
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Usuário</th>
+              <th>Operação</th>
+              <th>Resultado</th>
+              <th>Detalhes</th>
+            </tr>
+          </thead>
+          <tbody id="auditoria-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="auditoria-paginacao" class="hidden flex items-center justify-center gap-3 py-4">
+      <button onclick="paginar(-1)" class="btn btn-secondary" id="btn-anterior" style="font-size:0.8rem;">← Anterior</button>
+      <span id="pagina-info" class="text-sm" style="color:#999;"></span>
+      <button onclick="paginar(1)" class="btn btn-secondary" id="btn-proximo" style="font-size:0.8rem;">Próximo →</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let _offset = 0;
+const _limit = 50;
+
+async function carregarAuditoria(offset) {
+  _offset = Math.max(0, offset);
+  const loading = document.getElementById('auditoria-loading');
+  const vazio = document.getElementById('auditoria-vazio');
+  const lista = document.getElementById('auditoria-lista');
+  const paginacao = document.getElementById('auditoria-paginacao');
+  loading.classList.remove('hidden');
+  vazio.classList.add('hidden');
+  lista.classList.add('hidden');
+  paginacao.classList.add('hidden');
+  try {
+    const r = await fetch('/api/manutencao/auditoria?limite=' + _limit + '&offset=' + _offset);
+    const d = await r.json();
+    loading.classList.add('hidden');
+    if (d.ok && d.registros && d.registros.length > 0) {
+      document.getElementById('total-registros').textContent = d.total + ' registro(s) total';
+      let html = '';
+      d.registros.forEach(reg => {
+        const cor = reg.resultado === 'ok' ? '#4ade80' : '#f87171';
+        html += '<tr>';
+        html += '<td style="font-family:monospace;font-size:0.8rem;">' + reg.data_hora + '</td>';
+        html += '<td>' + (reg.usuario || 'Sistema') + '</td>';
+        html += '<td>' + reg.operacao + '</td>';
+        html += '<td><span style="color:' + cor + ';">' + reg.resultado + '</span></td>';
+        html += '<td style="color:#999;font-size:0.85rem;">' + (reg.detalhes || '—') + '</td>';
+        html += '</tr>';
+      });
+      document.getElementById('auditoria-tbody').innerHTML = html;
+      lista.classList.remove('hidden');
+      const totalPaginas = Math.ceil(d.total / _limit);
+      const paginaAtual = Math.floor(_offset / _limit) + 1;
+      document.getElementById('pagina-info').textContent = 'Página ' + paginaAtual + ' de ' + totalPaginas;
+      document.getElementById('btn-anterior').disabled = _offset === 0;
+      document.getElementById('btn-proximo').disabled = _offset + _limit >= d.total;
+      if (d.total > _limit) paginacao.classList.remove('hidden');
+    } else {
+      vazio.classList.remove('hidden');
+    }
+  } catch(e) {
+    loading.classList.add('hidden');
+    vazio.classList.remove('hidden');
+  }
+}
+
+function paginar(direcao) {
+  carregarAuditoria(_offset + direcao * _limit);
+}
+
+carregarAuditoria(0);
+</script>
+{% endblock %}

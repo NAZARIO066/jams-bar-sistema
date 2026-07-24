@@ -1,5 +1,11 @@
+import os
 from werkzeug.security import generate_password_hash
 from database import get_db
+
+ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
+ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "Admin@2026#Jam's")
+FUNC_LOGIN = os.environ.get("FUNC_LOGIN", "funcionario")
+FUNC_SENHA = os.environ.get("FUNC_SENHA", "Func@2026#Sistema")
 
 CATEGORIAS = [
     "Vinhos", "Whisky", "Vodka", "Gin", "Cervejas", "Refrigerantes",
@@ -105,11 +111,11 @@ def seed_initial():
     if not admin:
         db.execute(
             "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
-            ("Administrador", "admin", generate_password_hash("Admin@2026#Jam's"), "admin")
+            ("Administrador", ADMIN_LOGIN, generate_password_hash(ADMIN_SENHA), "admin")
         )
         db.execute(
             "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
-            ("Funcionário", "funcionario", generate_password_hash("Func@2026#Sistema"), "funcionario")
+            ("Funcionário", FUNC_LOGIN, generate_password_hash(FUNC_SENHA), "funcionario")
         )
     db.commit()
     # Produtos
@@ -146,14 +152,6 @@ def seed_initial():
 def seed_missing_data():
     db = get_db()
     from datetime import date, timedelta
-    from werkzeug.security import generate_password_hash, check_password_hash
-    admin = db.execute("SELECT id, senha FROM usuarios WHERE login='admin'").fetchone()
-    if admin and not check_password_hash(admin["senha"], "Admin@2026#Jam's"):
-        db.execute("UPDATE usuarios SET senha=? WHERE id=?", (generate_password_hash("Admin@2026#Jam's"), admin["id"]))
-    func = db.execute("SELECT id, senha FROM usuarios WHERE login='funcionario'").fetchone()
-    if func and not check_password_hash(func["senha"], "Func@2026#Sistema"):
-        db.execute("UPDATE usuarios SET senha=? WHERE id=?", (generate_password_hash("Func@2026#Sistema"), func["id"]))
-    db.commit()
     # Garçom padrão
     total_g = db.execute("SELECT COUNT(*) as c FROM garcons").fetchone()["c"]
     if total_g == 0:

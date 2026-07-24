@@ -42,6 +42,33 @@ def register_mesas_routes(app):
             result.append(d)
         return jsonify(result)
 
+    @app.route("/api/comandas")
+    @login_required
+    def api_comandas_list():
+        db = get_db()
+        status_filtro = request.args.get("status", "todas")
+        query = """
+            SELECT c.*, m.numero as mesa_numero, u.nome as funcionario, g.nome as garcom_nome
+            FROM comandas c
+            JOIN mesas m ON c.mesa_id=m.id
+            JOIN usuarios u ON c.usuario_id=u.id
+            LEFT JOIN garcons g ON c.garcom_id=g.id
+        """
+        params = []
+        if status_filtro != "todas":
+            query += " WHERE c.status=?"
+            params.append(status_filtro)
+        query += " ORDER BY c.id DESC"
+        comandas = db.execute(query, params).fetchall()
+        result = []
+        for c in comandas:
+            d = dict(c)
+            itens = db.execute("SELECT COUNT(*) as qtd, COALESCE(SUM(subtotal),0) as total FROM itens_comanda WHERE comanda_id=?", (c["id"],)).fetchone()
+            d["itens_qtd"] = itens["qtd"]
+            d["total"] = itens["total"]
+            result.append(d)
+        return jsonify(result)
+
     @app.route("/api/mesas/<int:mesa_id>/abrir", methods=["POST"])
     @login_required
     def abrir_mesa(mesa_id):
@@ -109,7 +136,13 @@ def register_mesas_routes(app):
     @login_required
     def comanda_remover_item(item_id):
         db = get_db()
+        item = db.execute("SELECT * FROM itens_comanda WHERE id=?", (item_id,)).fetchone()
+        if not item:
+            return jsonify({"erro": "Item não encontrado"}), 404
+        db.execute("UPDATE produtos SET estoque = estoque + ? WHERE id=?", (item["quantidade"], item["produto_id"]))
         db.execute("DELETE FROM itens_comanda WHERE id=?", (item_id,))
+        novo_total = db.execute("SELECT COALESCE(SUM(subtotal),0) as t FROM itens_comanda WHERE comanda_id=?", (item["comanda_id"],)).fetchone()["t"]
+        db.execute("UPDATE mesas SET valor_atual=? WHERE id=(SELECT mesa_id FROM comandas WHERE id=?)", (novo_total, item["comanda_id"]))
         db.commit()
         log_auditoria("REMOVER_ITEM", f"Item {item_id} removido da comanda")
         return jsonify({"ok": True})

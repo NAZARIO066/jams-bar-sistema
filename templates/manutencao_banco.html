@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% block title %}Manutenção — Banco de Dados{% endblock %}
+{% block page_title %}🛠 Banco de Dados{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-lg font-bold" style="color:#D4AF37;">Diagnóstico e Manutenção</h2>
+      <p class="text-sm" style="color:#999;">Verifique integridade, estatísticas, FKs e performace do banco de dados.</p>
+    </div>
+    <a href="/manutencao" class="btn btn-secondary">← Voltar</a>
+  </div>
+
+  <!-- Diagnóstico Completo -->
+  <div class="card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold" style="color:#D4AF37;">Diagnóstico Completo</h3>
+      <button onclick="carregarDiagnostico()" class="btn btn-primary" id="btn-diag">🔍 Executar Diagnóstico</button>
+    </div>
+    <div id="diag-resultado" class="hidden">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-integridade">—</div>
+          <div class="text-xs" style="color:#999;">Integridade</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-tempo">—</div>
+          <div class="text-xs" style="color:#999;">Tempo Resposta</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-tabelas">—</div>
+          <div class="text-xs" style="color:#999;">Tabelas</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-registros">—</div>
+          <div class="text-xs" style="color:#999;">Registros</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-tamanho">—</div>
+          <div class="text-xs" style="color:#999;">Tamanho</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-sqlite">—</div>
+          <div class="text-xs" style="color:#999;">SQLite</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="diag-ultimo-backup">—</div>
+          <div class="text-xs" style="color:#999;">Último Backup</div>
+        </div>
+      </div>
+      <div class="wz-confirm-panel" style="max-height:400px;overflow-y:auto;">
+        <div class="font-bold text-sm mb-2" style="color:#D4AF37;">Espaço por Tabela</div>
+        <div id="diag-tabelas-list"></div>
+      </div>
+    </div>
+    <div id="diag-loading" class="hidden text-center py-4" style="color:#999;">⏳ Executando diagnóstico...</div>
+  </div>
+
+  <!-- Integridade -->
+  <div class="card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold" style="color:#D4AF37;">Verificar Integridade (PRAGMA integrity_check)</h3>
+      <button onclick="verificarIntegridade()" class="btn btn-primary" id="btn-integ">🔒 Verificar</button>
+    </div>
+    <div id="integ-resultado" class="hidden p-3 rounded-lg text-sm"></div>
+  </div>
+
+  <!-- Estatísticas -->
+  <div class="card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold" style="color:#D4AF37;">Estatísticas</h3>
+      <button onclick="carregarEstatisticas()" class="btn btn-primary" id="btn-stats">📊 Ver Estatísticas</button>
+    </div>
+    <div id="stats-resultado" class="hidden">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="stats-total-tabelas">—</div>
+          <div class="text-xs" style="color:#999;">Total Tabelas</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="stats-total-registros">—</div>
+          <div class="text-xs" style="color:#999;">Total Registros</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="stats-tamanho">—</div>
+          <div class="text-xs" style="color:#999;">Tamanho</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" id="stats-versao">—</div>
+          <div class="text-xs" style="color:#999;">User Version</div>
+        </div>
+      </div>
+      <div class="wz-confirm-panel" style="max-height:300px;overflow-y:auto;">
+        <div id="stats-tabelas-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FKs Órfãs -->
+  <div class="card mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold" style="color:#D4AF37;">Verificar FKs Órfãs</h3>
+      <button onclick="verificarFKs()" class="btn btn-primary" id="btn-fks">🔍 Verificar</button>
+    </div>
+    <div id="fks-resultado" class="hidden">
+      <div id="fks-lista" class="wz-confirm-panel"></div>
+    </div>
+  </div>
+
+  <!-- Recalcular Fiados -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="font-bold" style="color:#D4AF37;">Recalcular Fiados</h3>
+        <p class="text-xs" style="color:#999;">Recalcula o saldo devedor de todos os clientes fiado.</p>
+      </div>
+      <button onclick="recalcularFiados()" class="btn btn-primary" id="btn-recalc">🔄 Recalcular</button>
+    </div>
+    <div id="recalc-resultado" class="hidden text-sm"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function carregarDiagnostico() {
+  const btn = document.getElementById('btn-diag');
+  const loading = document.getElementById('diag-loading');
+  const resultado = document.getElementById('diag-resultado');
+  btn.disabled = true;
+  loading.classList.remove('hidden');
+  resultado.classList.add('hidden');
+  try {
+    const r = await fetch('/api/manutencao/banco/diagnostico');
+    const d = await r.json();
+    loading.classList.add('hidden');
+    resultado.classList.remove('hidden');
+    document.getElementById('diag-integridade').innerHTML = d.integridade ? '<span style="color:#4ade80;">✔ Íntegro</span>' : '<span style="color:#f87171;">✘ Problema</span>';
+    document.getElementById('diag-tempo').innerHTML = d.tempo_resposta_ms !== null ? '<span style="color:' + (d.tempo_resposta_ms < 100 ? '#4ade80' : d.tempo_resposta_ms < 500 ? '#fbbf24' : '#f87171') + ';">' + d.tempo_resposta_ms + ' ms</span>' : '—';
+    document.getElementById('diag-tabelas').textContent = d.total_tabelas || d.tabelas.length;
+    document.getElementById('diag-registros').textContent = d.total_registros;
+    document.getElementById('diag-tamanho').textContent = d.tamanho_mb + ' MB';
+    document.getElementById('diag-sqlite').textContent = d.versao_sqlite || 'N/A';
+    document.getElementById('diag-ultimo-backup').innerHTML = d.ultimo_backup ? '<span style="color:#4ade80;">' + d.ultimo_backup + '</span>' : '<span style="color:#999;">Nenhum</span>';
+    let html = '';
+    (d.tabelas || []).forEach(t => {
+      html += '<div class="wz-confirm-row">';
+      html += '<span class="wz-confirm-label">' + t.nome + '</span>';
+      html += '<span class="wz-confirm-value">' + t.registros + ' regs</span>';
+      html += '<span class="wz-confirm-value" style="color:#999;">' + (t.tamanho_kb || 0) + ' KB</span>';
+      html += '</div>';
+    });
+    document.getElementById('diag-tabelas-list').innerHTML = html;
+  } catch(e) {
+    loading.classList.add('hidden');
+    resultado.classList.remove('hidden');
+    document.getElementById('diag-integridade').innerHTML = '<span style="color:#f87171;">Erro</span>';
+  }
+  btn.disabled = false;
+}
+
+async function verificarIntegridade() {
+  const btn = document.getElementById('btn-integ');
+  const resultado = document.getElementById('integ-resultado');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/manutencao/banco/integridade');
+    const d = await r.json();
+    resultado.classList.remove('hidden');
+    if (d.integridade) {
+      resultado.style.background = 'rgba(22,163,74,0.12)';
+      resultado.style.color = '#4ade80';
+      resultado.style.border = '1px solid rgba(22,163,74,0.2)';
+      resultado.innerHTML = '✔ Banco íntegro — SQLite ' + (d.versao_sqlite || 'N/A') + ' — ' + d.tamanho_mb + ' MB';
+    } else {
+      resultado.style.background = 'rgba(220,38,38,0.12)';
+      resultado.style.color = '#f87171';
+      resultado.style.border = '1px solid rgba(220,38,38,0.2)';
+      resultado.innerHTML = '✘ Problemas de integridade detectados';
+    }
+  } catch(e) {
+    resultado.classList.remove('hidden');
+    resultado.style.background = 'rgba(220,38,38,0.12)';
+    resultado.style.color = '#f87171';
+    resultado.innerHTML = '❌ Erro ao verificar integridade';
+  }
+  btn.disabled = false;
+}
+
+async function carregarEstatisticas() {
+  const btn = document.getElementById('btn-stats');
+  const resultado = document.getElementById('stats-resultado');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/manutencao/banco/estatisticas');
+    const d = await r.json();
+    resultado.classList.remove('hidden');
+    document.getElementById('stats-total-tabelas').textContent = d.total_tabelas;
+    document.getElementById('stats-total-registros').textContent = d.total_registros;
+    document.getElementById('stats-tamanho').textContent = d.tamanho_mb + ' MB';
+    document.getElementById('stats-versao').textContent = d.versao_user || 0;
+    let html = '';
+    (d.tabelas || []).forEach(t => {
+      html += '<div class="wz-confirm-row"><span class="wz-confirm-label">' + t.nome + '</span><span class="wz-confirm-value">' + t.registros + ' registros</span></div>';
+    });
+    document.getElementById('stats-tabelas-list').innerHTML = html;
+  } catch(e) {
+    resultado.classList.remove('hidden');
+  }
+  btn.disabled = false;
+}
+
+async function verificarFKs() {
+  const btn = document.getElementById('btn-fks');
+  const resultado = document.getElementById('fks-resultado');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/manutencao/banco/fks');
+    const d = await r.json();
+    resultado.classList.remove('hidden');
+    if (d.orfas && d.orfas.length > 0) {
+      let html = '<div class="p-3 rounded-lg" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);margin-bottom:8px;"><strong>' + d.total + ' FK(s) órfã(s) encontrada(s)</strong></div>';
+      d.orfas.forEach(o => {
+        html += '<div class="wz-confirm-row"><span class="wz-confirm-label" style="color:#fbbf24;">⚠ ' + o.tabela + '.' + o.coluna + ' → ' + o.referencia + '</span><span class="wz-confirm-value">' + o.quantidade + ' registro(s)</span></div>';
+      });
+      document.getElementById('fks-lista').innerHTML = html;
+    } else {
+      document.getElementById('fks-lista').innerHTML = '<div class="p-3 rounded-lg" style="background:rgba(22,163,74,0.12);color:#4ade80;border:1px solid rgba(22,163,74,0.2);">✔ Nenhuma FK órfã encontrada</div>';
+    }
+  } catch(e) {
+    resultado.classList.remove('hidden');
+    document.getElementById('fks-lista').innerHTML = '<div class="p-3 rounded-lg" style="background:rgba(220,38,38,0.12);color:#f87171;">❌ Erro ao verificar FKs</div>';
+  }
+  btn.disabled = false;
+}
+
+async function recalcularFiados() {
+  const btn = document.getElementById('btn-recalc');
+  const resultado = document.getElementById('recalc-resultado');
+  if (!confirm('Recalcular o saldo devedor de todos os clientes fiado?')) return;
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/manutencao/banco/recalcular_fiados', {method: 'POST'});
+    const d = await r.json();
+    resultado.classList.remove('hidden');
+    if (d.ok) {
+      resultado.style.background = 'rgba(22,163,74,0.12)';
+      resultado.style.color = '#4ade80';
+      resultado.style.border = '1px solid rgba(22,163,74,0.2)';
+      resultado.innerHTML = '✔ ' + d.clientes_atualizados + ' cliente(s) recalculado(s) com sucesso';
+    } else {
+      resultado.style.background = 'rgba(220,38,38,0.12)';
+      resultado.style.color = '#f87171';
+      resultado.style.border = '1px solid rgba(220,38,38,0.2)';
+      resultado.innerHTML = '❌ ' + (d.erro || 'Erro ao recalcular');
+    }
+  } catch(e) {
+    resultado.classList.remove('hidden');
+    resultado.style.background = 'rgba(220,38,38,0.12)';
+    resultado.style.color = '#f87171';
+    resultado.innerHTML = '❌ Erro de conexão';
+  }
+  btn.disabled = false;
+}
+</script>
+{% endblock %}

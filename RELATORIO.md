@@ -121,10 +121,7 @@ Sistema web completo para gestão de bar/adega/distribuidora com:
 
 ## 7. CREDENCIAIS DE TESTE
 
-| Perfil | Login | Senha |
-|--------|-------|-------|
-| Admin | `admin` | `Admin@2026#Jam's` |
-| Funcionário | `funcionario` | `Func@2026#Sistema` |
+> As credenciais estão definidas no `seed.py`. Consulte o arquivo para os valores atuais.
 
 ## 8. COMO RODA HOJE
 

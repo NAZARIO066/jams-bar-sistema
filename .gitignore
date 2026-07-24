@@ -32,5 +32,17 @@ flask_out.txt
 # Pytest
 .pytest_cache/
 
+# Artefatos locais de gerenciamento do Flask no Windows
+start_flask.bat
+
+# Scripts temporarios de verificacao de homologacao
+temp_hml_check.py
+
+# Backups locais de banco (rodando por manutencao/backup do sistema)
+static/uploads/backups/
+
+# Imagem de referencia interna (nao e publica)
+IMAGEM DO SISTEMA/
+
 # Outros
 PARA INICIAR O DIA SEGUINTE.png

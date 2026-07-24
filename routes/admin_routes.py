@@ -1,7 +1,7 @@
 import os
 import time
 from datetime import date
-from flask import render_template, request, jsonify, session
+from flask import render_template, request, jsonify, session, send_file
 from werkzeug.security import generate_password_hash
 from database import get_db
 from auth import login_required, admin_required, log_auditoria
@@ -154,7 +154,7 @@ def register_admin_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/contas_pagar", methods=["POST"])
-    @login_required
+    @admin_required
     def api_contas_pagar_create():
         db = get_db()
         d = request.json or {}
@@ -173,7 +173,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True, "id": cur.lastrowid})
 
     @app.route("/api/contas_pagar/<int:cid>/pagar", methods=["POST"])
-    @login_required
+    @admin_required
     def api_contas_pagar_pagar(cid):
         db = get_db()
         db.execute("UPDATE contas_pagar SET status='pago', pagamento=date('now') WHERE id=?", (cid,))
@@ -182,7 +182,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/contas_pagar/<int:cid>", methods=["DELETE"])
-    @login_required
+    @admin_required
     def api_contas_pagar_delete(cid):
         db = get_db()
         db.execute("UPDATE contas_pagar SET status='cancelado' WHERE id=?", (cid,))
@@ -242,4 +242,51 @@ def register_admin_routes(app):
         if os.path.exists(logo_path):
             os.remove(logo_path)
             log_auditoria("REMOVER_LOGO", "Logo do sistema removida")
+        return jsonify({"ok": True})
+
+    # =================== BACKUP ===================
+
+    @app.route("/api/backup")
+    @admin_required
+    def api_backup():
+        db_path = app.config["DATABASE"]
+        if not os.path.exists(db_path):
+            return jsonify({"ok": False, "erro": "Banco de dados não encontrado"}), 404
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        filename = f"backup_bar_adega_{timestamp}.db"
+        log_auditoria("BACKUP", f"Backup gerado: {filename}")
+        return send_file(db_path, as_attachment=True, download_name=filename, mimetype="application/octet-stream")
+
+    # =================== EMPRESA ===================
+
+    @app.route("/api/empresa")
+    @login_required
+    def api_empresa_get():
+        db = get_db()
+        empresa = db.execute("SELECT * FROM empresa LIMIT 1").fetchone()
+        return jsonify(dict(empresa) if empresa else {})
+
+    @app.route("/api/empresa", methods=["POST"])
+    @admin_required
+    def api_empresa_save():
+        db = get_db()
+        d = request.json or {}
+        empresa = db.execute("SELECT id FROM empresa LIMIT 1").fetchone()
+        if empresa:
+            db.execute("""UPDATE empresa SET razao_social=?, nome_fantasia=?, cnpj=?, 
+                inscricao_estadual=?, endereco=?, telefone=?, email=?, horario_funcionamento=?, observacao=? 
+                WHERE id=?""", 
+                (d.get("razao_social"), d.get("nome_fantasia"), d.get("cnpj"), 
+                 d.get("inscricao_estadual"), d.get("endereco"), d.get("telefone"), 
+                 d.get("email"), d.get("horario_funcionamento"), d.get("observacao"), empresa["id"]))
+        else:
+            db.execute("""INSERT INTO empresa (id, razao_social, nome_fantasia, cnpj, 
+                inscricao_estadual, endereco, telefone, email, horario_funcionamento, observacao) 
+                VALUES (1,?,?,?,?,?,?,?,?,?)""", 
+                (d.get("razao_social"), d.get("nome_fantasia"), d.get("cnpj"), 
+                 d.get("inscricao_estadual"), d.get("endereco"), d.get("telefone"), 
+                 d.get("email"), d.get("horario_funcionamento"), d.get("observacao")))
+        db.execute("DELETE FROM empresa WHERE id != 1")
+        db.commit()
+        log_auditoria("SALVAR_EMPRESA", "Dados da empresa atualizados")
         return jsonify({"ok": True})

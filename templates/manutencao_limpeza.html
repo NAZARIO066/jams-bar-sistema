@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% block title %}Manutenção — Limpeza{% endblock %}
+{% block page_title %}🧹 Limpeza{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-lg font-bold" style="color:#D4AF37;">Limpeza do Sistema</h2>
+      <p class="text-sm" style="color:#999;">Remova dados do sistema de forma segura. Todas as operações criam backup automático.</p>
+    </div>
+    <a href="/manutencao" class="btn btn-secondary">← Voltar</a>
+  </div>
+
+  <!-- Aviso de Segurança -->
+  <div class="p-4 rounded-lg text-sm mb-6" style="background:rgba(220,38,38,0.12);color:#fbbf24;border:1px solid rgba(220,38,38,0.2);">
+    ⚠️ <strong>Segurança:</strong> Todas as operações são irreversíveis. Um backup automático é criado antes de cada limpeza. A senha do administrador e confirmação textual são obrigatórias.
+  </div>
+
+  <!-- Grid de Operações -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="operacoes-grid">
+
+    <div class="card" id="card-vendas">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">💰</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Vendas</div>
+          <div class="text-xs" style="color:#999;">Remove vendas, itens de venda e fiados vinculados</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('vendas')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-vendas">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" id="card-comandas">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">📋</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Comandas</div>
+          <div class="text-xs" style="color:#999;">Remove todas as comandas e seus itens</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('comandas')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-comandas">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" id="card-caixa">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">💵</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Caixa</div>
+          <div class="text-xs" style="color:#999;">Remove registros de caixa, suprimentos e sangrias</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('caixa')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-caixa">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" id="card-estoque">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">📦</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Movimentações de Estoque</div>
+          <div class="text-xs" style="color:#999;">Remove histórico de movimentações</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('estoque')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-estoque">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" id="card-clientes">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">👤</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Clientes</div>
+          <div class="text-xs" style="color:#999;">Remove clientes e vínculos de fiado</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('clientes')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-clientes">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" id="card-fornecedores">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">🏢</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Fornecedores</div>
+          <div class="text-xs" style="color:#999;">Remove contas a pagar (fornecedores)</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('fornecedores')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-fornecedores">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" id="card-funcionarios">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">🧑‍🍳</span>
+        <div>
+          <div class="font-bold" style="color:#fff;">Limpar Funcionários</div>
+          <div class="text-xs" style="color:#999;">Remove funcionários (preserva administradores)</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('funcionarios')" class="btn btn-primary" style="width:100%;justify-content:center;" id="btn-preview-funcionarios">🔍 Visualizar Impacto</button>
+    </div>
+
+    <div class="card" style="border-color:rgba(220,38,38,0.3);" id="card-reset">
+      <div class="flex items-center gap-3 mb-3">
+        <span style="font-size:1.5rem;">⚠️</span>
+        <div>
+          <div class="font-bold" style="color:#f87171;">Reset Inteligente</div>
+          <div class="text-xs" style="color:#999;">Restaura estado inicial (preserva empresa, admin, categorias, produtos)</div>
+        </div>
+      </div>
+      <button onclick="iniciarPreview('reset')" class="btn btn-danger" style="width:100%;justify-content:center;" id="btn-preview-reset">🔍 Visualizar Impacto</button>
+    </div>
+  </div>
+
+  <!-- Modal de Preview/Confirmação -->
+  <div id="modal-limpeza" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:1000;">
+    <div class="card" style="max-width:560px;width:100%;margin:1rem;max-height:90vh;overflow-y:auto;">
+      <!-- Etapa 1: Preview -->
+      <div id="etapa-preview">
+        <h3 class="font-bold mb-3" style="color:#D4AF37;" id="preview-titulo">Resumo da Operação</h3>
+        <p class="text-sm mb-4" style="color:#999;" id="preview-descricao"></p>
+
+        <div class="wz-confirm-panel mb-4" id="preview-tabelas">
+          <div class="font-bold text-sm mb-2" style="color:#D4AF37;">Tabelas afetadas</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div class="wz-confirm-panel" style="text-align:center;">
+            <div class="text-lg font-bold" style="color:#f87171;" id="preview-total">0</div>
+            <div class="text-xs" style="color:#999;">Registros afetados</div>
+          </div>
+          <div class="wz-confirm-panel" style="text-align:center;">
+            <div class="text-lg font-bold" style="color:#fbbf24;" id="preview-tempo">~0s</div>
+            <div class="text-xs" style="color:#999;">Tempo estimado</div>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg text-sm mb-4" id="preview-impacto" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);">
+          ⚠️ Um backup automático será criado antes da operação.
+        </div>
+
+        <div class="flex gap-3 justify-end">
+          <button onclick="fecharModal()" class="btn btn-secondary">Cancelar</button>
+          <button onclick="irParaConfirmacao()" class="btn btn-primary" id="btn-ir-confirmar">Prosseguir →</button>
+        </div>
+      </div>
+
+      <!-- Etapa 2: Confirmação -->
+      <div id="etapa-confirmacao" class="hidden">
+        <h3 class="font-bold mb-3" style="color:#f87171;">⚠️ Confirmar Operação</h3>
+
+        <div class="mb-4">
+          <label class="text-sm font-bold block mb-1" style="color:#ccc;">Senha do Administrador</label>
+          <input type="password" id="input-senha" class="form-input" placeholder="Digite sua senha" style="width:100%;">
+        </div>
+
+        <div class="mb-4">
+          <label class="text-sm font-bold block mb-1" style="color:#ccc;">Confirmação Textual</label>
+          <p class="text-xs mb-2" style="color:#999;">Digite exatamente: <strong style="color:#f87171;" id="confirmacao-texto-exemplo"></strong></p>
+          <input type="text" id="input-confirmacao" class="form-input" placeholder="Digite a confirmação" style="width:100%;text-transform:uppercase;" autocomplete="off;">
+        </div>
+
+        <div id="confirmacao-erro" class="hidden p-3 rounded-lg text-sm mb-4" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);"></div>
+
+        <div class="flex gap-3 justify-end">
+          <button onclick="voltarParaPreview()" class="btn btn-secondary">← Voltar</button>
+          <button onclick="executarLimpeza()" class="btn btn-danger" id="btn-executar">🧹 Executar Limpeza</button>
+        </div>
+      </div>
+
+      <!-- Etapa 3: Resultado -->
+      <div id="etapa-resultado" class="hidden">
+        <h3 class="font-bold mb-3" id="resultado-titulo">Resultado</h3>
+
+        <div id="resultado-sucesso" class="hidden">
+          <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(22,163,74,0.12);color:#4ade80;border:1px solid rgba(22,163,74,0.2);">
+            ✔ <strong>Operação concluída com sucesso</strong>
+          </div>
+
+          <div class="wz-confirm-panel mb-4" id="resultado-removidos">
+            <div class="font-bold text-sm mb-2" style="color:#D4AF37;">Registros removidos</div>
+          </div>
+
+          <div class="wz-confirm-panel mb-4" id="resultado-preservados">
+            <div class="font-bold text-sm mb-2" style="color:#4ade80;">Registros preservados</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="wz-confirm-panel" style="text-align:center;">
+              <div class="text-lg font-bold" id="resultado-total-removidos" style="color:#f87171;">0</div>
+              <div class="text-xs" style="color:#999;">Total removidos</div>
+            </div>
+            <div class="wz-confirm-panel" style="text-align:center;">
+              <div class="text-lg font-bold" id="resultado-tempo" style="color:#D4AF37;">0s</div>
+              <div class="text-xs" style="color:#999;">Tempo total</div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(96,165,250,0.12);color:#60a5fa;border:1px solid rgba(96,165,250,0.2);">
+            💾 Backup criado: <strong id="resultado-backup">—</strong>
+          </div>
+
+          <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(22,163,74,0.12);color:#4ade80;border:1px solid rgba(22,163,74,0.2);">
+            🔒 Integridade do banco: <strong>OK</strong>
+          </div>
+        </div>
+
+        <div id="resultado-erro" class="hidden">
+          <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);">
+            ✘ <strong>Operação falhou</strong>
+          </div>
+          <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(220,38,38,0.08);color:#f87171;border:1px solid rgba(220,38,38,0.15);">
+            <span id="resultado-erro-msg"></span>
+          </div>
+          <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(96,165,250,0.12);color:#60a5fa;border:1px solid rgba(96,165,250,0.2);">
+            💾 Backup de segurança restaurado: <strong id="resultado-backup-restaurado">—</strong>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <button onclick="fecharModal()" class="btn btn-primary">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let _acaoAtual = null;
+let _previewData = null;
+
+function iniciarPreview(acao) {
+  _acaoAtual = acao;
+  document.getElementById('btn-preview-' + acao).disabled = true;
+  document.getElementById('btn-preview-' + acao).textContent = '⏳ Carregando...';
+
+  fetch('/api/manutencao/limpeza/preview', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({acao: acao})
+  })
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('btn-preview-' + acao).disabled = false;
+    document.getElementById('btn-preview-' + acao).textContent = '🔍 Visualizar Impacto';
+
+    if (!d.ok) {
+      alert(d.erro || 'Erro ao carregar preview');
+      return;
+    }
+
+    _previewData = d;
+    mostrarPreview(d);
+  })
+  .catch(e => {
+    document.getElementById('btn-preview-' + acao).disabled = false;
+    document.getElementById('btn-preview-' + acao).textContent = '🔍 Visualizar Impacto';
+    alert('Erro de conexão');
+  });
+}
+
+function mostrarPreview(d) {
+  document.getElementById('preview-titulo').textContent = d.nome;
+  document.getElementById('preview-descricao').textContent = d.descricao;
+  document.getElementById('preview-total').textContent = d.total_registros;
+  document.getElementById('preview-tempo').textContent = '~' + d.estimativa_segundos + 's';
+
+  let tabelasHtml = '<div class="font-bold text-sm mb-2" style="color:#D4AF37;">Tabelas afetadas</div>';
+  d.tabelas.forEach(t => {
+    tabelasHtml += '<div class="wz-confirm-row"><span class="wz-confirm-label">' + t.tabela + '</span><span class="wz-confirm-value" style="color:#f87171;">' + t.registros + ' registros</span></div>';
+  });
+  if (d.tabelas.length === 0) {
+    tabelasHtml += '<div class="text-sm" style="color:#999;">Nenhum registro encontrado</div>';
+  }
+  document.getElementById('preview-tabelas').innerHTML = tabelasHtml;
+
+  const nivel = d.nivel;
+  let impactoCor = nivel === 'critico' ? 'rgba(220,38,38,0.12)' : nivel === 'alto' ? 'rgba(251,191,36,0.12)' : 'rgba(96,165,250,0.12)';
+  let impactoTexto = nivel === 'critico' ? '#f87171' : nivel === 'alto' ? '#fbbf24' : '#60a5fa';
+  let impactoIcone = nivel === 'critico' ? '🔴' : nivel === 'alto' ? '🟡' : '🔵';
+  let impactoLabel = nivel === 'critico' ? 'CRÍTICO' : nivel === 'alto' ? 'ALTO' : 'MÉDIO';
+
+  document.getElementById('preview-impacto').style.background = impactoCor;
+  document.getElementById('preview-impacto').style.color = impactoTexto;
+  document.getElementById('preview-impacto').style.borderColor = impactoTexto.replace(')', ',0.3)').replace('rgb', 'rgba');
+  document.getElementById('preview-impacto').innerHTML = impactoIcone + ' <strong>Nível de impacto: ' + impactoLabel + '</strong> — Um backup automático será criado antes da operação.';
+
+  if (d.total_registros === 0) {
+    document.getElementById('preview-impacto').innerHTML = 'ℹ️ Nenhum registro para limpar. Operação desnecessária.';
+    document.getElementById('btn-ir-confirmar').disabled = true;
+  } else {
+    document.getElementById('btn-ir-confirmar').disabled = false;
+  }
+
+  document.getElementById('etapa-preview').classList.remove('hidden');
+  document.getElementById('etapa-confirmacao').classList.add('hidden');
+  document.getElementById('etapa-resultado').classList.add('hidden');
+  document.getElementById('modal-limpeza').classList.remove('hidden');
+}
+
+function irParaConfirmacao() {
+  document.getElementById('etapa-preview').classList.add('hidden');
+  document.getElementById('etapa-confirmacao').classList.remove('hidden');
+  document.getElementById('confirmacao-texto-exemplo').textContent = _previewData.confirmacao_necessaria;
+  document.getElementById('input-senha').value = '';
+  document.getElementById('input-confirmacao').value = '';
+  document.getElementById('confirmacao-erro').classList.add('hidden');
+  document.getElementById('input-senha').focus();
+}
+
+function voltarParaPreview() {
+  document.getElementById('etapa-confirmacao').classList.add('hidden');
+  document.getElementById('etapa-preview').classList.remove('hidden');
+}
+
+function executarLimpeza() {
+  const senha = document.getElementById('input-senha').value;
+  const confirmacao = document.getElementById('input-confirmacao').value;
+  const erroDiv = document.getElementById('confirmacao-erro');
+  const btn = document.getElementById('btn-executar');
+
+  if (!senha) {
+    erroDiv.textContent = 'Digite a senha do administrador.';
+    erroDiv.classList.remove('hidden');
+    return;
+  }
+  if (!confirmacao) {
+    erroDiv.textContent = 'Digite a confirmação textual.';
+    erroDiv.classList.remove('hidden');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Executando...';
+  erroDiv.classList.add('hidden');
+
+  fetch('/api/manutencao/limpeza/confirmar', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      acao: _acaoAtual,
+      senha: senha,
+      confirmacao: confirmacao
+    })
+  })
+  .then(r => r.json().then(d => ({status: r.status, data: d})))
+  .then(({status, data}) => {
+    btn.disabled = false;
+    btn.textContent = '🧹 Executar Limpeza';
+
+    if (!data.ok) {
+      erroDiv.textContent = data.erro || 'Erro desconhecido';
+      erroDiv.classList.remove('hidden');
+      return;
+    }
+
+    mostrarResultado(data);
+  })
+  .catch(e => {
+    btn.disabled = false;
+    btn.textContent = '🧹 Executar Limpeza';
+    erroDiv.textContent = 'Erro de conexão';
+    erroDiv.classList.remove('hidden');
+  });
+}
+
+function mostrarResultado(d) {
+  document.getElementById('etapa-confirmacao').classList.add('hidden');
+  document.getElementById('etapa-resultado').classList.remove('hidden');
+
+  if (d.ok) {
+    document.getElementById('resultado-sucesso').classList.remove('hidden');
+    document.getElementById('resultado-erro').classList.add('hidden');
+    document.getElementById('resultado-titulo').textContent = '✔ ' + d.mensagem;
+    document.getElementById('resultado-titulo').style.color = '#4ade80';
+
+    document.getElementById('resultado-total-removidos').textContent = d.total_removidos;
+    document.getElementById('resultado-tempo').textContent = d.tempo_segundos + 's';
+    document.getElementById('resultado-backup').textContent = d.backup_criado;
+
+    let remHtml = '<div class="font-bold text-sm mb-2" style="color:#D4AF37;">Registros removidos</div>';
+    for (const [tabela, count] of Object.entries(d.removidos)) {
+      if (count > 0) {
+        remHtml += '<div class="wz-confirm-row"><span class="wz-confirm-label">' + tabela + '</span><span class="wz-confirm-value" style="color:#f87171;">-' + count + '</span></div>';
+      }
+    }
+    document.getElementById('resultado-removidos').innerHTML = remHtml;
+
+    let presHtml = '<div class="font-bold text-sm mb-2" style="color:#4ade80;">Registros preservados</div>';
+    for (const [tabela, count] of Object.entries(d.preservados)) {
+      presHtml += '<div class="wz-confirm-row"><span class="wz-confirm-label">' + tabela + '</span><span class="wz-confirm-value" style="color:#4ade80;">' + count + '</span></div>';
+    }
+    document.getElementById('resultado-preservados').innerHTML = presHtml;
+  } else {
+    document.getElementById('resultado-sucesso').classList.add('hidden');
+    document.getElementById('resultado-erro').classList.remove('hidden');
+    document.getElementById('resultado-titulo').textContent = '✘ Operação falhou';
+    document.getElementById('resultado-titulo').style.color = '#f87171';
+    document.getElementById('resultado-erro-msg').textContent = d.erro || 'Erro desconhecido';
+    document.getElementById('resultado-backup-restaurado').textContent = d.backup_restaurado || '—';
+  }
+}
+
+function fecharModal() {
+  document.getElementById('modal-limpeza').classList.add('hidden');
+  _acaoAtual = null;
+  _previewData = null;
+  document.getElementById('input-senha').value = '';
+  document.getElementById('input-confirmacao').value = '';
+}
+</script>
+{% endblock %}

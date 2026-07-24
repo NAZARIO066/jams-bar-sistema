@@ -15,7 +15,9 @@
   <button onclick="carregar('atrasado')" class="btn btn-secondary" id="btn-atras">Atrasadas</button>
   <button onclick="carregar('pago')" class="btn btn-secondary" id="btn-pago">Pagas</button>
   <button onclick="verificarAtrasadas()" class="btn btn-danger ml-auto">🔄 Verificar Atrasadas</button>
+  {% if session.get('usuario_nivel') == 'admin' %}
   <button onclick="abrir()" class="btn btn-primary">+ Nova Conta</button>
+  {% endif %}
 </div>
 
 <div class="card overflow-auto">
@@ -47,6 +49,7 @@
 {% block scripts %}
 <script>
 let filtroAtual = 'todos';
+const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
 
 async function carregar(filtro) {
   filtroAtual = filtro;
@@ -77,8 +80,10 @@ async function carregar(filtro) {
       <td>${c.pagamento ? new Date(c.pagamento+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
       <td>${st}</td>
       <td class="text-right whitespace-nowrap">
+        ${isAdmin ? `
         ${c.status !== 'pago' && c.status !== 'cancelado' ? `<button onclick="pagar(${c.id})" class="text-green-400 mr-2" title="Marcar como pago">✅</button>` : ''}
         ${c.status !== 'pago' && c.status !== 'cancelado' ? `<button onclick="excluir(${c.id})" class="text-red-400" title="Cancelar">🗑</button>` : ''}
+        ` : ''}
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" class="text-slate-400 text-center py-6">Nenhuma conta</td></tr>';

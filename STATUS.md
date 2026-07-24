@@ -16,8 +16,7 @@ python app.py
 ```
 
 Acessar: **http://localhost:5000**
-**Login admin:** `admin` / `admin123`
-**Login funcionário:** `funcionario` / `123456`
+> As credenciais estão no `seed.py`. Para alterar, edite e reinicie.
 
 Para parar: `Ctrl+C` no terminal.
 

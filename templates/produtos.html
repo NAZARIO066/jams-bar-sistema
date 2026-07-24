@@ -5,7 +5,9 @@
 <div class="flex justify-between items-center mb-4">
   <input id="busca" placeholder="🔍 Buscar..." class="px-3 py-2 rounded w-64" oninput="listar()">
   <div class="flex gap-2">
+    {% if session.get('usuario_nivel') == 'admin' %}
     <button onclick="abrirCategoria()" class="btn btn-secondary">+ Categoria</button>
+    {% endif %}
     {% if session.get('usuario_nivel') == 'admin' %}
     <button onclick="abrirProduto()" class="btn btn-primary">+ Produto</button>
     {% endif %}

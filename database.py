@@ -91,7 +91,8 @@ CREATE TABLE IF NOT EXISTS vendas (
     desconto REAL NOT NULL DEFAULT 0,
     forma_pagamento TEXT,
     data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    tipo TEXT NOT NULL CHECK(tipo IN ('mesa','direta'))
+    tipo TEXT NOT NULL CHECK(tipo IN ('mesa','direta')),
+    status TEXT NOT NULL DEFAULT 'ativa' CHECK(status IN ('ativa','cancelada'))
 );
 
 CREATE TABLE IF NOT EXISTS itens_venda (
@@ -223,6 +224,19 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 );
 CREATE INDEX IF NOT EXISTS idx_login_attempts_login ON login_attempts(login);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_criado_em ON login_attempts(criado_em);
+
+CREATE TABLE IF NOT EXISTS empresa (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    razao_social TEXT,
+    nome_fantasia TEXT,
+    cnpj TEXT,
+    inscricao_estadual TEXT,
+    endereco TEXT,
+    telefone TEXT,
+    email TEXT,
+    horario_funcionamento TEXT,
+    observacao TEXT
+);
 
 CREATE INDEX IF NOT EXISTS idx_comandas_mesa ON comandas(mesa_id);
 CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);

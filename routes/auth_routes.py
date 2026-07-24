@@ -23,7 +23,7 @@ def register_auth_routes(app):
             db = get_db()
             user = db.execute("SELECT * FROM usuarios WHERE login=? AND ativo=1", (login_user,)).fetchone()
             if user and check_password_hash(user["senha"], senha):
-                record_login_attempt(login_user)
+                session.clear()
                 session.permanent = True
                 session["usuario_id"] = user["id"]
                 session["usuario_nome"] = user["nome"]

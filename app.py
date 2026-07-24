@@ -18,6 +18,9 @@ from routes.clientes_routes import register_clientes_routes
 from routes.caixa_routes import register_caixa_routes
 from routes.admin_routes import register_admin_routes
 from routes.relatorios_routes import register_relatorios_routes
+from routes.migration_routes import register_migration_routes
+from migration.routes import register_wizard_routes
+from maintenance.routes import register_maintenance_routes
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -33,6 +36,9 @@ register_clientes_routes(app)
 register_caixa_routes(app)
 register_admin_routes(app)
 register_relatorios_routes(app)
+register_migration_routes(app)
+register_wizard_routes(app)
+register_maintenance_routes(app)
 
 
 # =================== INICIALIZAÇÃO ===================
@@ -107,6 +113,40 @@ def ensure_db():
             seed_missing_data()
         except Exception as e:
             logging.warning("Dados complementares: %s", e)
+        try:
+            cols_emp = [r["name"] for r in db.execute("PRAGMA table_info(empresa)").fetchall()]
+            if not cols_emp:
+                db.execute("""CREATE TABLE IF NOT EXISTS empresa (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    razao_social TEXT,
+                    nome_fantasia TEXT,
+                    cnpj TEXT,
+                    inscricao_estadual TEXT,
+                    endereco TEXT,
+                    telefone TEXT,
+                    email TEXT,
+                    horario_funcionamento TEXT,
+                    observacao TEXT
+                )""")
+                db.commit()
+        except Exception as e:
+            logging.warning("Migração empresa: %s", e)
+        try:
+            cols_v = [r["name"] for r in db.execute("PRAGMA table_info(vendas)").fetchall()]
+            if "status" not in cols_v:
+                db.execute("ALTER TABLE vendas ADD COLUMN status TEXT NOT NULL DEFAULT 'ativa'")
+                db.commit()
+        except Exception as e:
+            logging.warning("Migração vendas.status: %s", e)
+        try:
+            empresa_count = db.execute("SELECT COUNT(*) as c FROM empresa").fetchone()["c"]
+            if empresa_count > 1:
+                empresa_primera = db.execute("SELECT id FROM empresa ORDER BY id ASC LIMIT 1").fetchone()
+                if empresa_primera:
+                    db.execute("DELETE FROM empresa WHERE id != ?", (empresa_primera["id"],))
+                    db.commit()
+        except Exception as e:
+            logging.warning("Migração empresa singleton: %s", e)
     _db_ready = True
 
 

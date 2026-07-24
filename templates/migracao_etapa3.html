@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% block title %}Migração — Análise{% endblock %}
+{% block page_title %}🔄 Assistente de Migração{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <!-- Wizard Steps Indicator -->
+  <div class="flex items-center justify-center gap-0 mb-8 mt-4">
+    <div class="wz-step wz-step-done">
+      <div class="wz-circle wz-circle-done">✓</div>
+      <span class="wz-label">Origem</span>
+    </div>
+    <div class="wz-line wz-line-done"></div>
+    <div class="wz-step wz-step-done">
+      <div class="wz-circle wz-circle-done">✓</div>
+      <span class="wz-label">Upload</span>
+    </div>
+    <div class="wz-line wz-line-done"></div>
+    <div class="wz-step wz-step-active">
+      <div class="wz-circle">3</div>
+      <span class="wz-label">Análise</span>
+    </div>
+    <div class="wz-line wz-line-inactive"></div>
+    <div class="wz-step">
+      <div class="wz-circle wz-circle-muted">4</div>
+      <span class="wz-label wz-label-muted">Confirmação</span>
+    </div>
+  </div>
+
+  <div class="card animate-fade-in">
+    <div class="mb-6">
+      <h2 class="text-xl font-bold mb-1" style="color:#D4AF37;">Resumo da Análise</h2>
+      <p class="text-sm" style="color:#999;">Resultado da análise automática do arquivo enviado.</p>
+    </div>
+
+    <!-- File Info Panel -->
+    <div class="wz-confirm-panel mb-4">
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📄 Arquivo</span>
+        <span class="wz-confirm-value font-bold">{{ analise.arquivo_nome }}</span>
+      </div>
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">🏷️ Tipo</span>
+        <span class="wz-confirm-value"><span class="badge badge-gold">{{ analise.tipo_fonte|upper }}</span></span>
+      </div>
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📦 Tamanho</span>
+        <span class="wz-confirm-value">{{ analise.arquivo_tamanho_mb }} MB</span>
+      </div>
+      {% if analise.metadata %}
+      {% for key, val in analise.metadata.items() %}
+      {% if key != 'abas' %}
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">ℹ️ {{ key|replace('_', ' ')|title }}</span>
+        <span class="wz-confirm-value">{{ val }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Tables Found -->
+    <div class="mb-4">
+      <h3 class="text-sm font-bold mb-3" style="color:#D4AF37;">Tabelas / Abas Encontradas</h3>
+      {% if analise.tabelas %}
+      <div class="wz-confirm-panel">
+        {% for tbl in analise.tabelas %}
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label">
+            {% if analise.tipo_fonte == 'csv' %}📋{% else %}✔{% endif %}
+            {{ tbl.nome }}
+          </span>
+          <span class="wz-confirm-value">
+            <span class="badge badge-green">{{ tbl.registros }} registro{{ 's' if tbl.registros != 1 }}</span>
+            {% if tbl.colunas is defined %}
+            <span class="badge badge-blue" style="margin-left:0.3rem;">{{ tbl.colunas }} col{{ 's' if tbl.colunas != 1 }}</span>
+            {% endif %}
+          </span>
+        </div>
+        {% if tbl.cabecalhos is defined and tbl.cabecalhos %}
+        <div style="padding:0 0.75rem 0.5rem;">
+          <div class="text-xs" style="color:#999;">Colunas: {{ tbl.cabecalhos|join(', ') }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <div class="mt-2 text-sm font-bold" style="color:#D4AF37;">
+        Total: {{ analise.total_registros }} registro{{ 's' if analise.total_registros != 1 }}
+      </div>
+      {% else %}
+      <div class="wz-confirm-panel">
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label" style="color:#fbbf24;">⚠️ Nenhuma tabela encontrada</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Integrity -->
+    <div class="mb-4">
+      <h3 class="text-sm font-bold mb-3" style="color:#D4AF37;">Integridade</h3>
+      <div class="wz-confirm-panel">
+        {% for check in analise.integridade %}
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label">
+            {% if check.ok %}<span style="color:#4ade80;">✔</span>{% else %}<span style="color:#f87171;">✘</span>{% endif %}
+            {{ check.check|replace('_', ' ')|title }}
+          </span>
+          <span class="wz-confirm-value" style="color:{{ '#4ade80' if check.ok else '#f87171' }};">{{ check.detalhe }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Errors -->
+    {% if analise.erros %}
+    <div class="mb-4">
+      <div class="p-3 rounded-lg text-sm" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);">
+        {% for erro in analise.erros %}
+        <div>❌ {{ erro }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Compatibility Report -->
+    {% if compat %}
+    <div class="mt-6">
+      <h3 class="text-sm font-bold mb-3" style="color:#D4AF37;">Relatório de Compatibilidade</h3>
+
+      <!-- Score Bar -->
+      <div class="wz-confirm-panel mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-bold" style="color:{% if compat.compatibilidade_index >= 90 %}#4ade80{% elif compat.compatibilidade_index >= 70 %}#D4AF37{% elif compat.compatibilidade_index >= 50 %}#fb923c{% else %}#f87171{% endif %};">
+            {{ compat.compatibilidade_index }}%
+          </span>
+          <span class="badge" style="background:{% if compat.compatibilidade_index >= 90 %}rgba(74,222,128,0.15);color:#4ade80{% elif compat.compatibilidade_index >= 70 %}rgba(212,175,55,0.15);color:#D4AF37{% elif compat.compatibilidade_index >= 50 %}rgba(251,146,60,0.15);color:#fb923c{% else %}rgba(248,113,113,0.15);color:#f87171{% endif %};">
+            {{ compat.classificacao }}
+          </span>
+        </div>
+        <div style="background:#222;border-radius:6px;height:10px;overflow:hidden;">
+          <div style="height:100%;border-radius:6px;background:{% if compat.compatibilidade_index >= 90 %}#4ade80{% elif compat.compatibilidade_index >= 70 %}#D4AF37{% elif compat.compatibilidade_index >= 50 %}#fb923c{% else %}#f87171{% endif %};width:{{ compat.compatibilidade_index }}%;"></div>
+        </div>
+      </div>
+
+      <!-- Summary Stats -->
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" style="color:#D4AF37;">{{ compat.total_tabelas_encontradas }}/{{ compat.total_tabelas_esperadas }}</div>
+          <div class="text-xs" style="color:#999;">Tabelas</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" style="color:#D4AF37;">{{ compat.total_registros }}</div>
+          <div class="text-xs" style="color:#999;">Registros</div>
+        </div>
+        <div class="wz-confirm-panel" style="text-align:center;">
+          <div class="text-lg font-bold" style="color:{% if compat.criticos > 0 %}#f87171{% else %}#4ade80{% endif %};">{{ compat.criticos }}</div>
+          <div class="text-xs" style="color:#999;">Erros Críticos</div>
+        </div>
+      </div>
+
+      <!-- Table Compatibility -->
+      {% if compat.tabelas %}
+      <div class="wz-confirm-panel mb-4">
+        {% for t in compat.tabelas %}
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label">
+            {% if t.compatibilidade >= 90 %}<span style="color:#4ade80;">✔</span>{% elif t.compatibilidade >= 50 %}<span style="color:#fbbf24;">⚠</span>{% else %}<span style="color:#f87171;">✘</span>{% endif %}
+            {{ t.nome }}
+          </span>
+          <span class="wz-confirm-value">
+            <span style="color:{% if t.compatibilidade >= 90 %}#4ade80{% elif t.compatibilidade >= 70 %}#D4AF37{% elif t.compatibilidade >= 50 %}#fb923c{% else %}#f87171{% endif %};font-weight:bold;">{{ t.compatibilidade }}%</span>
+            <span style="color:#666;margin-left:0.5rem;">{{ t.colunas_encontradas }}/{{ t.colunas_totais }} cols</span>
+            <span style="color:#666;margin-left:0.5rem;">{{ t.registros }} regs</span>
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Issues -->
+      {% if compat.issues %}
+      <div class="wz-confirm-panel mb-4" style="max-height:300px;overflow-y:auto;">
+        {% for issue in compat.issues %}
+        <div class="wz-confirm-row" style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <span class="wz-confirm-label">
+            {% if issue.severidade == 'critico' %}<span style="color:#f87171;">✖</span>{% elif issue.severidade == 'aviso' %}<span style="color:#fbbf24;">⚠</span>{% else %}<span style="color:#60a5fa;">ℹ</span>{% endif %}
+            {{ issue.mensagem }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Import Status -->
+      {% if not compat.pode_importar %}
+      <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);">
+        ✖ <strong>Importação bloqueada</strong> — Existem erros críticos que impedem a importação segura.
+      </div>
+      {% else %}
+      <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(22,163,74,0.12);color:#4ade80;border:1px solid rgba(22,163,74,0.2);">
+        ✔ Importação permitida — Nenhum erro crítico encontrado.
+      </div>
+      {% endif %}
+
+      <!-- Export Buttons -->
+      <div class="flex gap-3 mb-4">
+        <a href="/migracao/relatorio/json" class="btn btn-secondary flex-1 text-center text-sm" style="padding:0.5rem;">📥 Relatório JSON</a>
+        <a href="/migracao/relatorio/html" class="btn btn-secondary flex-1 text-center text-sm" style="padding:0.5rem;">📄 Relatório HTML</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="flex gap-3 mt-6">
+      {% if analise.ok %}
+      <a href="/migracao/etapa4" class="btn btn-primary flex-1 text-center">Próximo →</a>
+      {% endif %}
+      <a href="/migracao/etapa2" class="btn btn-secondary flex-1 text-center">← Voltar</a>
+      <button onclick="cancelar()" class="btn btn-danger">✕ Cancelar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function cancelar() {
+  if (!confirm('Cancelar a migração? O arquivo temporário será removido.')) return;
+  try { await fetch('/api/migracao/cancelar', { method: 'POST' }); } catch(e) {}
+  window.location.href = '/migracao/etapa1';
+}
+</script>
+{% endblock %}

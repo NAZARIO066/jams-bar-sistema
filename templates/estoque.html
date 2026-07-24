@@ -9,8 +9,10 @@
 </div>
 
 <div class="flex gap-2 mb-4">
+  {% if session.get('usuario_nivel') == 'admin' %}
   <button onclick="abrirMov('entrada')" class="btn btn-success">+ Entrada</button>
   <button onclick="abrirMov('saida')" class="btn btn-danger">- Saída</button>
+  {% endif %}
   <button onclick="listarMov()" class="btn btn-secondary">🔄 Movimentações</button>
 </div>
 
@@ -53,6 +55,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
 async function listar() {
   const r = await fetch('/api/estoque');
   const lista = await r.json();

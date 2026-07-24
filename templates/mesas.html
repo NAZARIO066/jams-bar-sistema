@@ -220,7 +220,7 @@ async function trocarGarcom(mesaId) {
   const garcomId = parseInt(novoGarcom);
   const g = garcons.find(x => x.id === garcomId);
   if (!g) { toast('Garçom inválido', 'error'); return; }
-  const r = await fetch(`/api/comanda/${comandaAtual}/garcom`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({garcom_id: garcomId}) });
+  const r = await fetch(`/api/comanda/${comandaAtual}/trocar_garcom`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({garcom_id: garcomId}) });
   const d = await r.json();
   if (d.ok) { toast(`Garçom alterado para ${g.nome}`); abrirMesa(mesaAtual.id); loadMesas(); }
   else toast(d.erro || 'Erro', 'error');

@@ -31,7 +31,7 @@
   <div class="card overflow-auto mb-4">
     <h3 class="font-semibold mb-3">Vendas no Período</h3>
     <table class="table">
-      <thead><tr><th>#</th><th>Data</th><th>Tipo</th><th>Mesa</th><th>Garçom</th><th>Forma</th><th class="text-right">Total</th></tr></thead>
+      <thead><tr><th>#</th><th>Data</th><th>Tipo</th><th>Mesa</th><th>Garçom</th><th>Forma</th><th class="text-right">Total</th><th>Ações</th></tr></thead>
       <tbody id="lista-v"></tbody>
     </table>
   </div>
@@ -123,6 +123,7 @@
 <script>
 let abaAtual = 'vendas';
 let chartPeriodo = 'hoje';
+const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
 
 function calcPeriodo(periodo) {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -181,7 +182,8 @@ async function carregarVendas(periodo) {
       <td><span class="badge ${v.tipo==='mesa'?'badge-blue':'badge-gray'}">${v.tipo}</span></td>
       <td>${v.mesa||'—'}</td><td>${v.garcom||v.funcionario||'—'}</td><td>${v.forma_pagamento||'—'}</td>
       <td class="text-right font-bold text-brand-500">${fmtMoeda(v.valor_total)}</td>
-    </tr>`).join('') || '<tr><td colspan="7" class="text-slate-400 text-center py-6">Sem vendas</td></tr>';
+      <td class="text-right">${v.status !== 'cancelada' && isAdmin ? `<button onclick="cancelarVenda(${v.id})" class="text-xs px-2 py-1 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50">Cancelar</button>` : v.status === 'cancelada' ? '<span class="text-xs text-slate-500">Cancelada</span>' : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="8" class="text-slate-400 text-center py-6">Sem vendas</td></tr>';
   const rm = await fetch('/api/relatorios/mesas');
   const ms = await rm.json();
   document.getElementById('lista-m').innerHTML = ms.map(m => `<tr><td>Mesa ${String(m.numero).padStart(2,'0')}</td><td>${m.pedidos||0}</td><td class="text-right font-bold">${fmtMoeda(m.total||0)}</td></tr>`).join('');
@@ -268,6 +270,22 @@ function custom() {
   if (!ini || !fim) return toast('Informe início e fim', 'error');
   const p = { inicio: ini, fim: fim, label: `${ini} a ${fim}` };
   carregar(p);
+}
+
+async function cancelarVenda(vendaId) {
+  if (!confirm('Tem certeza que deseja cancelar esta venda? O estoque será devolvido.')) return;
+  try {
+    const r = await fetch(`/api/venda/${vendaId}/cancelar`, { method: 'POST' });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Venda #${vendaId} cancelada com sucesso!`);
+      carregar(chartPeriodo);
+    } else {
+      toast(d.erro || 'Erro ao cancelar', 'error');
+    }
+  } catch(e) {
+    toast('Erro de conexão', 'error');
+  }
 }
 
 carregar('hoje');

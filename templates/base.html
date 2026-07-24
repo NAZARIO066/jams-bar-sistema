@@ -57,6 +57,12 @@
         <div style="border-top:1px solid rgba(212,175,55,0.08);margin:.5rem 0;padding-top:.5rem;">
           <a href="{{ url_for('usuarios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'usuarios' else '' }}"><span class="nav-icon">👥</span> Usuários</a>
           <a href="{{ url_for('auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'auditoria' else '' }}"><span class="nav-icon">🔍</span> Auditoria</a>
+          <div style="border-top:1px solid rgba(212,175,55,0.06);margin:.4rem 0;padding-top:.4rem;">
+            <div class="px-2 py-1 text-xs font-semibold" style="color:#D4AF37;letter-spacing:0.08em;text-transform:uppercase;">Ferramentas</div>
+            <a href="{{ url_for('migracao_etapa1') }}" class="nav-item {{ 'nav-item-active' if 'migracao' in (request.endpoint or '') else '' }}"><span class="nav-icon">🔄</span> Assistente de Migração</a>
+            <a href="{{ url_for('manutencao_dashboard') }}" class="nav-item {{ 'nav-item-active' if 'manutencao' in (request.endpoint or '') else '' }}"><span class="nav-icon">🛠</span> Centro de Manutenção</a>
+            <a href="{{ url_for('manutencao_auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'manutencao_auditoria' else '' }}"><span class="nav-icon">📋</span> Auditoria Manutenção</a>
+          </div>
         </div>
       {% endif %}
     </nav>
@@ -162,6 +168,28 @@
         </div>
         <div id="logo-status" class="mt-2 text-sm"></div>
       </div>
+      <div>
+        <label class="block text-sm font-medium mb-2" style="color:#D6D6D6;">Backup do Sistema</label>
+        <p class="text-xs mb-3" style="color:#999;">Faça o download do banco de dados atual.</p>
+        <button onclick="fazerBackup()" class="btn btn-primary" id="btn-backup">📥 Baixar Backup</button>
+        <div id="backup-status" class="mt-2 text-sm"></div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2" style="color:#D6D6D6;">Dados da Empresa</label>
+        <div class="space-y-2">
+          <input id="emp-razao" placeholder="Razão Social" class="w-full px-3 py-2 rounded">
+          <input id="emp-fantasia" placeholder="Nome Fantasia" class="w-full px-3 py-2 rounded">
+          <input id="emp-cnpj" placeholder="CNPJ" class="w-full px-3 py-2 rounded">
+          <input id="emp-ie" placeholder="Inscrição Estadual" class="w-full px-3 py-2 rounded">
+          <input id="emp-endereco" placeholder="Endereço" class="w-full px-3 py-2 rounded">
+          <input id="emp-telefone" placeholder="Telefone" class="w-full px-3 py-2 rounded">
+          <input id="emp-email" placeholder="E-mail" class="w-full px-3 py-2 rounded">
+          <input id="emp-horario" placeholder="Horário de Funcionamento" class="w-full px-3 py-2 rounded">
+          <textarea id="emp-observacao" placeholder="Observações" class="w-full px-3 py-2 rounded" rows="2"></textarea>
+        </div>
+        <button onclick="salvarEmpresa()" class="btn btn-primary mt-3">💾 Salvar Dados</button>
+        <div id="empresa-status" class="mt-2 text-sm"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -252,6 +280,7 @@
   // Config / Logo
   window.abrirConfig = function() {
     document.getElementById('config-modal').classList.remove('hidden');
+    carregarEmpresa();
   };
   window.fecharConfig = function() {
     document.getElementById('config-modal').classList.add('hidden');
@@ -309,6 +338,81 @@
       }
     } catch(e) {
       statusEl.innerHTML = '<span style="color:#f87171;">❌ Erro ao remover</span>';
+    }
+  };
+
+  window.fazerBackup = async function() {
+    const statusEl = document.getElementById('backup-status');
+    statusEl.innerHTML = '<span style="color:#999;">⏳ Gerando backup...</span>';
+    try {
+      const r = await fetch('/api/backup');
+      if (r.ok) {
+        const blob = await r.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const disposition = r.headers.get('content-disposition');
+        const filename = disposition ? disposition.split('filename=')[1].replace(/"/g, '') : 'backup.db';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        statusEl.innerHTML = '<span style="color:#4ade80;">✅ Backup baixado!</span>';
+      } else {
+        const d = await r.json();
+        statusEl.innerHTML = '<span style="color:#f87171;">❌ ' + (d.erro || 'Erro ao gerar backup') + '</span>';
+      }
+    } catch(e) {
+      statusEl.innerHTML = '<span style="color:#f87171;">❌ Erro de conexão</span>';
+    }
+  };
+
+  window.carregarEmpresa = async function() {
+    try {
+      const r = await fetch('/api/empresa');
+      const d = await r.json();
+      if (d.id) {
+        document.getElementById('emp-razao').value = d.razao_social || '';
+        document.getElementById('emp-fantasia').value = d.nome_fantasia || '';
+        document.getElementById('emp-cnpj').value = d.cnpj || '';
+        document.getElementById('emp-ie').value = d.inscricao_estadual || '';
+        document.getElementById('emp-endereco').value = d.endereco || '';
+        document.getElementById('emp-telefone').value = d.telefone || '';
+        document.getElementById('emp-email').value = d.email || '';
+        document.getElementById('emp-horario').value = d.horario_funcionamento || '';
+        document.getElementById('emp-observacao').value = d.observacao || '';
+      }
+    } catch(e) {}
+  };
+
+  window.salvarEmpresa = async function() {
+    const statusEl = document.getElementById('empresa-status');
+    statusEl.innerHTML = '<span style="color:#999;">⏳ Salvando...</span>';
+    const data = {
+      razao_social: document.getElementById('emp-razao').value,
+      nome_fantasia: document.getElementById('emp-fantasia').value,
+      cnpj: document.getElementById('emp-cnpj').value,
+      inscricao_estadual: document.getElementById('emp-ie').value,
+      endereco: document.getElementById('emp-endereco').value,
+      telefone: document.getElementById('emp-telefone').value,
+      email: document.getElementById('emp-email').value,
+      horario_funcionamento: document.getElementById('emp-horario').value,
+      observacao: document.getElementById('emp-observacao').value
+    };
+    try {
+      const r = await fetch('/api/empresa', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      });
+      const d = await r.json();
+      if (d.ok) {
+        statusEl.innerHTML = '<span style="color:#4ade80;">✅ Dados salvos!</span>';
+      } else {
+        statusEl.innerHTML = '<span style="color:#f87171;">❌ ' + (d.erro || 'Erro ao salvar') + '</span>';
+      }
+    } catch(e) {
+      statusEl.innerHTML = '<span style="color:#f87171;">❌ Erro de conexão</span>';
     }
   };
 

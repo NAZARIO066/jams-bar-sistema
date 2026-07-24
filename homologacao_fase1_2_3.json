@@ -1,0 +1,398 @@
+{
+  "homologacao": {
+    "data": "2026-07-24 03:34:20",
+    "operador": "admin (automatizado)",
+    "objetivo": "Homologacao completa com dados reais"
+  },
+  "fase1_preparacao": {
+    "backup": {
+      "status": "OK",
+      "arquivo": {
+        "nome": "backup_20260724_033421.db",
+        "caminho": "E:\\SISTEMA DE GESTÃO PARA BAR, ADEGA E MESAS\\static\\uploads\\backups\\backup_20260724_033421.db",
+        "tamanho": 778240,
+        "tamanho_mb": 0.74,
+        "data": "2026-07-24 03:34:21",
+        "descricao": "homologacao_pre_importacao",
+        "usuario": "admin"
+      },
+      "erro": null,
+      "tempo_s": 0.05
+    },
+    "integridade": {
+      "resultado": "ok",
+      "tempo_ms": 16.67
+    },
+    "foreign_keys": {
+      "total": 26,
+      "tempo_ms": 0.0
+    },
+    "espaco": {
+      "tamanho_antes_bytes": 778240,
+      "tamanho_antes_mb": 0.74,
+      "paginas": 190,
+      "livres": 62
+    },
+    "registros_antes": {
+      "usuarios": 4,
+      "mesas": 40,
+      "categorias": 12,
+      "produtos": 49,
+      "comandas": 115,
+      "itens_comanda": 380,
+      "vendas": 222,
+      "itens_venda": 487,
+      "movimentacoes": 575,
+      "clientes": 52,
+      "fiado": 18,
+      "auditoria": 1579,
+      "caixas": 25,
+      "garcons": 5,
+      "contas_pagar": 10,
+      "suprimento_sangria": 7,
+      "historico_transferencias": 2,
+      "login_attempts": 0,
+      "empresa": 1
+    },
+    "tempo_total_s": 11.02
+  },
+  "fase2_importacao": {
+    "compatibilidade_index": 100.0,
+    "classificacao": "Excelente",
+    "tabelas_encontradas": 19,
+    "tabelas_mapeadas": 19,
+    "total_tabelas_esperadas": 19,
+    "registros_analisados": 1533,
+    "registros_importados": 1533,
+    "tabelas_importadas": {
+      "auditoria": {
+        "colunas": [
+          "id",
+          "usuario_id",
+          "usuario_nome",
+          "acao",
+          "detalhes",
+          "data_hora",
+          "ip",
+          "user_agent"
+        ],
+        "registros": 20
+      },
+      "caixas": {
+        "colunas": [
+          "id",
+          "usuario_id",
+          "abertura",
+          "fechamento",
+          "valor_inicial",
+          "valor_final",
+          "total_vendas",
+          "quantidade_vendas",
+          "diferenca",
+          "observacao"
+        ],
+        "registros": 7
+      },
+      "categorias": {
+        "colunas": [
+          "id",
+          "nome"
+        ],
+        "registros": 12
+      },
+      "clientes": {
+        "colunas": [
+          "id",
+          "nome",
+          "telefone",
+          "cpf",
+          "endereco",
+          "limite_fiado",
+          "saldo_devedor",
+          "observacao",
+          "ativo",
+          "criado_em"
+        ],
+        "registros": 30
+      },
+      "comandas": {
+        "colunas": [
+          "id",
+          "mesa_id",
+          "usuario_id",
+          "garcom_id",
+          "cliente_nome",
+          "abertura",
+          "fechamento",
+          "status"
+        ],
+        "registros": 103
+      },
+      "contas_pagar": {
+        "colunas": [
+          "id",
+          "fornecedor",
+          "descricao",
+          "valor",
+          "vencimento",
+          "pagamento",
+          "status",
+          "usuario_id",
+          "observacao",
+          "criado_em"
+        ],
+        "registros": 10
+      },
+      "empresa": {
+        "colunas": [
+          "id",
+          "razao_social",
+          "nome_fantasia",
+          "cnpj",
+          "inscricao_estadual",
+          "endereco",
+          "telefone",
+          "email",
+          "horario_funcionamento",
+          "observacao"
+        ],
+        "registros": 1
+      },
+      "fiado": {
+        "colunas": [
+          "id",
+          "cliente_id",
+          "venda_id",
+          "tipo",
+          "valor",
+          "valor_pago",
+          "data_vencimento",
+          "usuario_id",
+          "observacao",
+          "data_hora"
+        ],
+        "registros": 15
+      },
+      "garcons": {
+        "colunas": [
+          "id",
+          "nome",
+          "telefone",
+          "comissao",
+          "ativo",
+          "criado_em"
+        ],
+        "registros": 5
+      },
+      "historico_transferencias": {
+        "colunas": [
+          "id",
+          "comanda_id",
+          "mesa_origem_id",
+          "mesa_destino_id",
+          "usuario_id",
+          "data_hora",
+          "observacao"
+        ],
+        "registros": 3
+      },
+      "itens_comanda": {
+        "colunas": [
+          "id",
+          "comanda_id",
+          "produto_id",
+          "quantidade",
+          "preco_unitario",
+          "subtotal",
+          "observacao",
+          "usuario_id",
+          "criado_em"
+        ],
+        "registros": 374
+      },
+      "itens_venda": {
+        "colunas": [
+          "id",
+          "venda_id",
+          "produto_id",
+          "quantidade",
+          "preco_unitario",
+          "subtotal",
+          "observacao"
+        ],
+        "registros": 374
+      },
+      "login_attempts": {
+        "colunas": [
+          "id",
+          "login",
+          "criado_em"
+        ],
+        "registros": 0
+      },
+      "mesas": {
+        "colunas": [
+          "id",
+          "numero",
+          "capacidade",
+          "status",
+          "valor_atual",
+          "aberta_em",
+          "reservada_para"
+        ],
+        "registros": 40
+      },
+      "movimentacoes": {
+        "colunas": [
+          "id",
+          "produto_id",
+          "tipo",
+          "quantidade",
+          "motivo",
+          "usuario_id",
+          "data_hora",
+          "observacao"
+        ],
+        "registros": 374
+      },
+      "produtos": {
+        "colunas": [
+          "id",
+          "nome",
+          "categoria_id",
+          "codigo_barras",
+          "preco",
+          "estoque",
+          "estoque_minimo",
+          "unidade",
+          "ativo",
+          "criado_em"
+        ],
+        "registros": 49
+      },
+      "suprimento_sangria": {
+        "colunas": [
+          "id",
+          "caixa_id",
+          "usuario_id",
+          "tipo",
+          "valor",
+          "motivo",
+          "data_hora"
+        ],
+        "registros": 9
+      },
+      "usuarios": {
+        "colunas": [
+          "id",
+          "nome",
+          "login",
+          "senha",
+          "nivel",
+          "ativo",
+          "criado_em"
+        ],
+        "registros": 4
+      },
+      "vendas": {
+        "colunas": [
+          "id",
+          "comanda_id",
+          "mesa_id",
+          "usuario_id",
+          "valor_total",
+          "desconto",
+          "forma_pagamento",
+          "data",
+          "tipo",
+          "status"
+        ],
+        "registros": 103
+      }
+    },
+    "tempo_analise_s": 0.32,
+    "tempo_importacao_s": 0.25,
+    "ok": true,
+    "erros": [],
+    "avisos": [],
+    "pode_importar": true,
+    "tempo_total_s": 0.84
+  },
+  "fase3_validacao": {
+    "registros_depois": {
+      "usuarios": 4,
+      "mesas": 40,
+      "categorias": 12,
+      "produtos": 49,
+      "comandas": 115,
+      "itens_comanda": 380,
+      "vendas": 222,
+      "itens_venda": 487,
+      "movimentacoes": 575,
+      "clientes": 52,
+      "fiado": 18,
+      "auditoria": 1580,
+      "caixas": 25,
+      "garcons": 5,
+      "contas_pagar": 10,
+      "suprimento_sangria": 9,
+      "historico_transferencias": 3,
+      "login_attempts": 0,
+      "empresa": 1
+    },
+    "registros_antes": {
+      "usuarios": 4,
+      "mesas": 40,
+      "categorias": 12,
+      "produtos": 49,
+      "comandas": 115,
+      "itens_comanda": 380,
+      "vendas": 222,
+      "itens_venda": 487,
+      "movimentacoes": 575,
+      "clientes": 52,
+      "fiado": 18,
+      "auditoria": 1579,
+      "caixas": 25,
+      "garcons": 5,
+      "contas_pagar": 10,
+      "suprimento_sangria": 7,
+      "historico_transferencias": 2,
+      "login_attempts": 0,
+      "empresa": 1
+    },
+    "validacoes": {
+      "login_admin": true,
+      "login_func": true,
+      "funcionarios": true,
+      "clientes": true,
+      "produtos": true,
+      "categorias": true,
+      "mesas": true,
+      "caixa_status": true,
+      "vendas": true,
+      "comandas": true,
+      "fiados": true,
+      "contas_pagar": true,
+      "empresa": true,
+      "garcons": true,
+      "estoque": true,
+      "backup_page": true,
+      "auditoria": true,
+      "manutencao_dashboard": true,
+      "integridade_post": true,
+      "foreign_keys": true,
+      "performance": true
+    },
+    "tempo_s": 9.36,
+    "integridade": "ok",
+    "fk_erros": 0,
+    "performance_ms": 0.0,
+    "total_checks": 21,
+    "total_ok": 21,
+    "total_fail": 0
+  },
+  "fase4_testes": {},
+  "bugs_encontrados": [],
+  "bugs_corrigidos": []
+}

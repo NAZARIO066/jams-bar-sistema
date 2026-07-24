@@ -1,6 +1,6 @@
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, log_auditoria
+from auth import login_required, admin_required, log_auditoria
 from services.estoque_service import registrar_entrada, produto_existe
 
 
@@ -29,7 +29,7 @@ def register_estoque_routes(app):
         return jsonify(result)
 
     @app.route("/api/estoque/entrada", methods=["POST"])
-    @login_required
+    @admin_required
     def api_estoque_entrada():
         d = request.json or {}
         pid = d.get("produto_id")
@@ -47,7 +47,7 @@ def register_estoque_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/estoque/saida", methods=["POST"])
-    @login_required
+    @admin_required
     def api_estoque_saida():
         db = get_db()
         d = request.json or {}

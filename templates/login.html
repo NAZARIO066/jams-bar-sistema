@@ -9,70 +9,1228 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+  :root {
+    --gold: #D4AF37;
+    --gold-light: #F4D03F;
+    --gold-dark: #B8860B;
+    --gold-glow: rgba(212, 175, 55, 0.25);
+    --gold-soft: rgba(212, 175, 55, 0.1);
+    --bg: #0A0A0A;
+    --bg-deep: #0D0D0D;
+    --panel: #141414;
+    --panel-2: #1A1A1A;
+    --panel-3: #1E1E1E;
+    --border: rgba(212, 175, 55, 0.1);
+    --border-bright: rgba(212, 175, 55, 0.2);
+    --text: #FFFFFF;
+    --text-dim: #A0A0A0;
+    --muted: #6E6E6E;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ===== BACKGROUND ATMOSPHERE ===== */
+  .login-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 20%, rgba(212,175,55,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 40% at 85% 80%, rgba(184,134,11,0.06) 0%, transparent 50%),
+      linear-gradient(180deg, #0A0A0A 0%, #0D0D0D 40%, #141414 70%, #0A0A0A 100%);
+  }
+
+  .login-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 10% 20%, rgba(212,175,55,0.03) 1px, transparent 1px),
+      radial-gradient(circle at 90% 80%, rgba(184,134,11,0.02) 1px, transparent 1px);
+    background-size: 120px 120px, 180px 180px;
+    pointer-events: none;
+  }
+
+  .login-bg::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 300px;
+    background: linear-gradient(180deg, transparent 0%, rgba(212,175,55,0.02) 100%);
+    pointer-events: none;
+  }
+
+  /* Floating gold particles */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--gold);
+    opacity: 0;
+    pointer-events: none;
+    animation: floatParticle 10s linear infinite;
+    filter: blur(0.5px);
+  }
+
+  @keyframes floatParticle {
+    0% { transform: translateY(100vh) translateX(0) scale(0.3); opacity: 0; }
+    10% { opacity: 0.5; }
+    90% { opacity: 0.5; }
+    100% { transform: translateY(-20vh) translateX(60px) scale(1); opacity: 0; }
+  }
+
+  /* Subtle light beams */
+  .light-beam {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212,175,55,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    animation: beamFloat 20s ease-in-out infinite;
+  }
+
+  .light-beam:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+  .light-beam:nth-child(2) { top: 60%; right: 5%; animation-delay: -7s; }
+  .light-beam:nth-child(3) { bottom: 10%; left: 50%; transform: translateX(-50%); animation-delay: -14s; }
+
+  @keyframes beamFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+    25% { transform: translate(20px, -20px) scale(1.1); opacity: 0.8; }
+    50% { transform: translate(-15px, 15px) scale(0.9); opacity: 0.4; }
+    75% { transform: translate(10px, 10px) scale(1.05); opacity: 0.7; }
+  }
+
+  /* ===== MAIN LAYOUT ===== */
+  .login-container {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+  }
+
+  .login-main {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 1rem;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .login-grid {
+    width: 100%;
+    max-width: 1440px;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  /* ===== LEFT VISUAL PANEL ===== */
+  .visual-panel {
+    display: none;
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(20,20,20,0.95) 0%, rgba(10,10,10,0.98) 100%);
+    border: 1px solid var(--border);
+    min-height: 0;
+  }
+
+  .visual-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 30% 30%, rgba(212,175,55,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 40% at 70% 70%, rgba(184,134,11,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .visual-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .visual-content {
+    position: relative;
+    z-index: 3;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 2rem;
+    text-align: center;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Premium ambient background (image unique — CSS art de adega premium) */
+  .visual-panel {
+    background:
+      radial-gradient(ellipse 70% 55% at 30% 25%, rgba(212,175,55,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 75% 80%, rgba(184,134,11,0.08) 0%, transparent 60%),
+      linear-gradient(170deg, #0F0F0F 0%, #1A1407 35%, #0A0A0A 70%, #050505 100%);
+    background-size: cover, cover, cover;
+  }
+
+  /* Premium tagline */
+  .visual-tagline {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900;
+    font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+    line-height: 1.15;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 35%, var(--gold) 65%, var(--gold-dark) 100%);
+    background-size: 250% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 5s linear infinite;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.75rem;
+  }
+
+  .visual-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    max-width: 320px;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -250% center; }
+    100% { background-position: 250% center; }
+  }
+
+  /* Subtle glass reflection at bottom */
+  .visual-reflection {
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 60px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.03) 0%, transparent 100%);
+    border-radius: 50%;
+    filter: blur(20px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== CENTER LOGIN PANEL ===== */
+  .login-panel {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+    padding: 1rem 0;
+  }
+
+  .login-card {
+    width: 100%;
+    background: linear-gradient(145deg, rgba(20,20,20,0.95) 0%, rgba(13,13,13,0.98) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: 1.5rem;
+    padding: clamp(1.75rem, 2.5vw, 2.75rem);
+    box-shadow:
+      0 12px 48px rgba(0,0,0,0.6),
+      0 0 0 1px rgba(212,175,55,0.06),
+      inset 0 1px 0 rgba(212,175,55,0.04);
+    animation: cardReveal 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s both;
+    position: relative;
+  }
+
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.3;
+  }
+
+  @keyframes cardReveal {
+    from { opacity: 0; transform: translateY(24px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .login-header {
+    text-align: center;
+    margin-bottom: 2.25rem;
+  }
+
+  .logo-wrapper {
+    width: 76px;
+    height: 76px;
+    border-radius: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin: 0 auto 1.25rem;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 50%, var(--gold) 100%);
+    box-shadow:
+      0 0 36px rgba(212,175,55,0.35),
+      0 0 72px rgba(212,175,55,0.12),
+      0 10px 36px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+    animation: logoPulse 5s ease-in-out infinite, logoFloat 6s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 1.375rem;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light), var(--gold-dark));
+    opacity: 0;
+    filter: blur(16px);
+    transition: opacity 0.4s;
+    z-index: -1;
+  }
+
+  .logo-wrapper:hover::before { opacity: 0.4; }
+
+  .logo-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .logo-fallback {
+    font-size: 2.4rem;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+  }
+
+  @keyframes logoPulse {
+    0%, 100% { box-shadow: 0 0 36px rgba(212,175,55,0.35), 0 0 72px rgba(212,175,55,0.12), 0 10px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); }
+    50% { box-shadow: 0 0 50px rgba(212,175,55,0.45), 0 0 90px rgba(212,175,55,0.18), 0 14px 44px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15); }
+  }
+
+  @keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  .login-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900;
+    font-size: clamp(1.75rem, 3.5vw, 2.1rem);
+    letter-spacing: 0.04em;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 35%, var(--gold) 65%, var(--gold-dark) 100%);
+    background-size: 250% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 5s linear infinite;
+    filter: drop-shadow(0 2px 12px rgba(212,175,55,0.25));
+    margin-bottom: 0.3rem;
+  }
+
+  .login-subtitle {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* Form */
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.85;
+  }
+
+  .input-wrapper {
+    position: relative;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 1rem 1.125rem 1rem 3.25rem;
+    border-radius: 1rem;
+    background: linear-gradient(145deg, rgba(15,15,15,0.8) 0%, rgba(10,10,10,0.9) 100%);
+    border: 1px solid rgba(212,175,55,0.14);
+    color: #FFFFFF;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    caret-color: var(--gold-light);
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    -webkit-text-fill-color: #FFFFFF;
+  }
+
+  .form-input::placeholder {
+    color: #6E6E6E;
+    font-weight: 400;
+    -webkit-text-fill-color: #6E6E6E;
+  }
+
+  .form-input:hover:not(:focus) {
+    border-color: rgba(212,175,55,0.25);
+    background: linear-gradient(145deg, rgba(18,18,18,0.9) 0%, rgba(12,12,12,0.95) 100%);
+  }
+
+  .form-input:focus {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 3px rgba(212,175,55,0.14),
+      0 0 24px rgba(212,175,55,0.08),
+      inset 0 1px 0 rgba(212,175,55,0.1);
+    background: linear-gradient(145deg, rgba(18,18,18,0.95) 0%, rgba(12,12,12,1) 100%);
+    color: var(--gold-light);
+    -webkit-text-fill-color: var(--gold-light);
+    caret-color: var(--gold);
+  }
+
+  /* Autofill do navegador: força branco com dourado, evita cinza claro */
+  .form-input:-webkit-autofill,
+  .form-input:-webkit-autofill:hover,
+  .form-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #FFFFFF;
+    -webkit-box-shadow: 0 0 0 1000px rgba(15,15,15,0.95) inset;
+    caret-color: var(--gold);
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  .input-icon {
+    position: absolute;
+    left: 1.125rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold);
+    opacity: 0.65;
+    pointer-events: none;
+    transition: all 0.3s;
+    width: 20px;
+    height: 20px;
+  }
+
+  .form-input:focus + .input-icon,
+  .input-wrapper:focus-within .input-icon {
+    opacity: 1;
+    color: var(--gold-light);
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  .btn-submit {
+    width: 100%;
+    padding: 1.125rem;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark), var(--gold));
+    background-size: 200% auto;
+    color: #0D0D0D;
+    font-weight: 700;
+    font-size: 1.0625rem;
+    letter-spacing: 0.02em;
+    border: none;
+    cursor: pointer;
+    transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow:
+      0 6px 28px rgba(212,175,55,0.38),
+      inset 0 1px 0 rgba(255,255,255,0.18);
+    position: relative;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .btn-submit::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.55s ease;
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 12px 40px rgba(212,175,55,0.48),
+      inset 0 1px 0 rgba(255,255,255,0.25);
+    background-position: right center;
+  }
+
+  .btn-submit:hover::before { transform: translateX(100%); }
+
+  .btn-submit:active { transform: translateY(-1px) scale(0.995); }
+
+  .btn-submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .btn-submit:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px rgba(212,175,55,0.25),
+      0 12px 40px rgba(212,175,55,0.48),
+      inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+
+  /* Alert messages */
+  .alert {
+    padding: 1rem 1.125rem;
+    border-radius: 0.875rem;
+    font-size: 0.875rem;
+    animation: alertSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .alert-error {
+    background: rgba(220,38,38,0.12);
+    color: #f87171;
+    border: 1px solid rgba(220,38,38,0.2);
+  }
+
+  @keyframes alertSlide {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== RIGHT SIDE PANEL ===== */
+  .side-panel {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    padding: 0.25rem;
+  }
+
+  .panel-card {
+    background: linear-gradient(145deg, rgba(20,20,20,0.85) 0%, rgba(13,13,13,0.95) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1.25rem 1.25rem;
+    position: relative;
+    flex: 0 0 auto;
+  }
+
+  .panel-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.2;
+  }
+
+  /* Calendar Card */
+  .calendar-card { }
+
+  .calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .calendar-nav {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.875rem;
+    background: linear-gradient(145deg, rgba(212,175,55,0.1) 0%, rgba(184,134,11,0.08) 100%);
+    border: 1px solid rgba(212,175,55,0.18);
+    color: var(--gold);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .calendar-nav:hover {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0D0D0D;
+    transform: scale(1.08);
+    box-shadow: 0 4px 20px rgba(212,175,55,0.35);
+  }
+
+  .calendar-nav:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.3);
+  }
+
+  .calendar-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--gold);
+    min-width: 170px;
+    text-align: center;
+    letter-spacing: 0.01em;
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+
+  /* Container dos dias injetados pelo JS — deve ser um grid proprio de 7 colunas */
+  #calendarDays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    grid-column: 1 / -1;
+  }
+
+  .calendar-day-name {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 0;
+    text-align: center;
+    opacity: 0.8;
+  }
+
+  .calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 0.625rem;
+    color: #F5F5F5;
+    transition: all 0.2s;
+    cursor: default;
+    min-height: 2rem;
+  }
+
+  .calendar-day:hover:not(.empty):not(.today) {
+    background: rgba(212,175,55,0.12);
+    color: var(--gold-light);
+  }
+
+  .calendar-day.empty { color: transparent; }
+
+  .calendar-day.today {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0D0D0D;
+    font-weight: 800;
+    box-shadow:
+      0 2px 16px rgba(212,175,55,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.15);
+    animation: todayPulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes todayPulse {
+    0%, 100% { box-shadow: 0 2px 16px rgba(212,175,55,0.45), inset 0 1px 0 rgba(255,255,255,0.15); }
+    50% { box-shadow: 0 4px 24px rgba(212,175,55,0.65), inset 0 1px 0 rgba(255,255,255,0.2); }
+  }
+
+  .calendar-day.other-month {
+    color: var(--muted);
+  }
+
+  .calendar-day.other-month.today {
+    color: #0D0D0D;
+  }
+
+  /* Welcome Card */
+  .welcome-card {
+    text-align: center;
+  }
+
+  .welcome-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 1.125rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, rgba(212,175,55,0.14) 0%, rgba(184,134,11,0.1) 100%);
+    color: var(--gold);
+    margin-bottom: 0.875rem;
+    box-shadow: inset 0 1px 0 rgba(212,175,55,0.15);
+  }
+
+  .welcome-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-text {
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* Info Panel Card */
+  .info-panel-card { }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.875rem;
+  }
+
+  .info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    padding: 1rem;
+    background: linear-gradient(145deg, rgba(12,12,12,0.6) 0%, rgba(8,8,8,0.8) 100%);
+    border: 1px solid rgba(212,175,55,0.07);
+    border-radius: 0.875rem;
+  }
+
+  .info-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.0625rem;
+    background: linear-gradient(135deg, rgba(212,175,55,0.14) 0%, rgba(184,134,11,0.1) 100%);
+    color: var(--gold);
+    flex-shrink: 0;
+  }
+
+  .info-content { flex: 1; min-width: 0; }
+
+  .info-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.85;
+    margin-bottom: 0.1875rem;
+  }
+
+  .info-value {
+    font-size: 0.8125rem;
+    color: var(--text);
+    line-height: 1.35;
+  }
+
+  /* Current time display */
+  .current-time-display {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 1.25rem;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 20px rgba(212,175,55,0.2);
+  }
+
+  /* ===== ENTRANCE ANIMATIONS ===== */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in-1 { animation: fadeInUp 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s both; }
+  .animate-in-2 { animation: fadeInUp 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s both; }
+  .animate-in-3 { animation: fadeInUp 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s both; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (min-width: 768px) {
+    .visual-panel { display: flex; }
+
+    .login-grid {
+      grid-template-columns: 35fr 30fr 35fr;
+      align-items: stretch;
+      gap: 1rem;
+      height: 100%;
+      max-height: 100%;
+    }
+
+    .visual-panel {
+      border-radius: 1.5rem;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .login-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .side-panel {
+      display: flex;
+      padding: 0.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .login-grid {
+      max-width: 1440px;
+      grid-template-columns: 35fr 30fr 35fr;
+      gap: 1rem;
+    }
+
+    .visual-panel {
+      padding: 2.5rem 2rem;
+      border-radius: 1.5rem;
+    }
+
+    .visual-content { padding: 0; }
+
+    .visual-tagline { font-size: 2.25rem; }
+
+    .login-panel { padding: 0; }
+
+    .login-card { padding: clamp(1.75rem, 2.5vw, 2.75rem); }
+
+    .side-panel {
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+      justify-content: flex-start;
+      flex: 1 1 auto;
+      padding: 0;
+      gap: 0.75rem;
+    }
+
+    /* Calendar no topo, relógio + welcome + info preenchendo */
+    .calendar-card { flex: 0 0 auto; }
+    .current-time-card { flex: 0 0 auto; }
+    .welcome-card { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center; }
+    .info-panel-card { flex: 0 0 auto; }
+
+    .panel-card { padding: 1.25rem; }
+
+    .info-grid { gap: 0.75rem; }
+
+    .info-item { padding: 0.875rem; }
+  }
+
+  @media (max-width: 1023px) and (min-width: 768px) {
+    .login-grid { grid-template-columns: 35fr 30fr 35fr; gap: 0.75rem; }
+    .visual-panel { padding: 1.5rem 1.25rem; border-radius: 1.25rem; }
+    .visual-tagline { font-size: 1.5rem; }
+    .side-panel { padding: 0.5rem; gap: 0.6rem; }
+    .panel-card { padding: 1rem; }
+    .info-item { padding: 0.75rem; }
+    .login-card { padding: 1.5rem 1.25rem; }
+  }
+
+  @media (max-width: 767px) {
+    body { height: auto; overflow: auto; }
+
+    .login-container { height: auto; overflow: visible; }
+
+    .login-main {
+      padding: 1rem;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    .login-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      height: auto;
+    }
+
+    .visual-panel {
+      display: flex;
+      padding: 2rem 1.25rem;
+      margin: 0 -0.5rem;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      min-height: auto;
+      overflow: hidden;
+    }
+
+    .visual-content { padding: 0; }
+
+    .visual-tagline { font-size: 1.375rem; }
+
+    .visual-subtitle { font-size: 0.875rem; }
+
+    .login-card { padding: 2rem 1.5rem; }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel-card { padding: 1.25rem; }
+
+    .calendar-card { order: 1; }
+
+    .welcome-card { order: 2; }
+
+    .info-panel-card { order: 3; }
+
+    .info-grid {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .info-item { padding: 0.875rem; }
+  }
+
+  @media (max-width: 480px) {
+    .info-panel-card { order: 3; }
+    .current-time-display { font-size: 1.25rem; }
+  }
+
+  @media (max-width: 360px) {
+    .login-card { padding: 1.5rem 1.125rem; }
+    .visual-panel { padding: 1.5rem 1rem; }
+  }
+</style>
 </head>
-<body class="login-body">
+<body>
+<div class="login-bg" id="loginBg">
+  <div class="light-beam" aria-hidden="true"></div>
+  <div class="light-beam" aria-hidden="true"></div>
+  <div class="light-beam" aria-hidden="true"></div>
+</div>
 
-  <!-- Golden Particles -->
-  {% for i in range(14) %}
-  <div class="login-particle" style="left: {{ (i * 7.2 + 3) % 100 }}%; top: {{ (i * 11 + 7) % 90 + 5 }}%; animation: floatParticle {{ 6 + (i % 4) * 2 }}s linear {{ i * 1.2 }}s infinite; width: {{ [2,3,4,5][i % 4] }}px; height: {{ [2,3,4,5][i % 4] }}px;"></div>
-  {% endfor %}
-
-  <!-- Glow behind logo -->
-  <div class="login-glow-bg"></div>
-
-  <!-- Login Container -->
-  <div class="w-full max-w-sm" style="animation: loginFadeIn 1s ease-out;">
-    <div class="text-center mb-8">
-      <!-- Logo 40% maior -->
-      <div style="animation: logoReveal 1.2s ease-out 0.2s both;">
-        <div class="inline-flex w-28 h-28 rounded-[1.25rem] items-center justify-center text-5xl overflow-hidden"
-             style="background: linear-gradient(135deg, #D4AF37 0%, #B8860B 50%, #D4AF37 100%); box-shadow: 0 0 30px rgba(212,175,55,0.3), 0 0 60px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.4); animation: goldenPulse 3s ease-in-out infinite;" id="login-logo">
-          <img src="{{ url_for('static', filename='uploads/logo.png') }}" class="w-full h-full object-cover" alt="JAM'S BURGUER">
+<div class="login-container">
+  <main class="login-main">
+    <div class="login-grid">
+      <!-- LEFT VISUAL PANEL -->
+      <div class="visual-panel animate-in-1" role="img" aria-label="Ambiente premium JAM'S BURGUER com bebidas">
+        <div class="visual-reflection" aria-hidden="true"></div>
+        <div class="visual-content">
+          <p class="visual-tagline">A Experiência<br>Que Você Merece</p>
+          <p class="visual-subtitle">Ambiente premium, drinks exclusivos e o melhor atendimento da cidade. Sua noite começa aqui.</p>
         </div>
       </div>
 
-      <!-- Título Premium -->
-      <h1 class="login-title mt-5 mb-1">JAM'S BURGUER</h1>
-      <p class="login-subtitle">Lanchonete e Conveniência</p>
-    </div>
-
-    <!-- Card Glassmorphism -->
-    <div class="login-card">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for cat, msg in messages %}
-          <div class="mb-4 p-3 rounded-lg text-sm" style="background:rgba(220,38,38,0.15);color:#f87171;border:1px solid rgba(220,38,38,0.3);">{{ msg }}</div>
-        {% endfor %}
-      {% endwith %}
-
-      <form method="post" class="space-y-5">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <!-- Usuário -->
-        <div>
-          <label class="block text-xs font-medium mb-1.5" style="color:#D6D6D6;letter-spacing:0.05em;">USUÁRIO</label>
-          <div class="relative">
-            <svg class="login-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <input name="login" required autofocus placeholder="Digite seu usuário" class="login-input">
+      <!-- CENTER LOGIN PANEL -->
+      <div class="login-panel animate-in-2">
+        <div class="login-card">
+          <div class="login-header">
+            <div class="logo-wrapper" id="logoWrapper">
+              {% if logo_timestamp %}
+                <img src="{{ url_for('static', filename='uploads/logo.png') }}?t={{ logo_timestamp }}" alt="JAM'S BURGUER">
+              {% else %}
+                <span class="logo-fallback">🍔</span>
+              {% endif %}
+            </div>
+            <h1 class="login-title">JAM'S BURGUER</h1>
+            <p class="login-subtitle">Lanchonete e Conveniência</p>
           </div>
+
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for cat, msg in messages %}
+                <div class="alert alert-error" role="alert">{{ msg }}</div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form method="post" class="login-form" novalidate>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <div class="form-group">
+              <label class="form-label" for="login">Usuário</label>
+              <div class="input-wrapper">
+                <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <input type="text" name="login" id="login" required autofocus placeholder="Digite seu usuário" class="form-input" autocomplete="username">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="senha">Senha</label>
+              <div class="input-wrapper">
+                <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input type="password" name="senha" id="senha" required placeholder="Digite sua senha" class="form-input" autocomplete="current-password">
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit">ENTRAR</button>
+          </form>
         </div>
-
-        <!-- Senha -->
-        <div>
-          <label class="block text-xs font-medium mb-1.5" style="color:#D6D6D6;letter-spacing:0.05em;">SENHA</label>
-          <div class="relative">
-            <svg class="login-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <input name="senha" type="password" required placeholder="Digite sua senha" class="login-input">
-          </div>
-        </div>
-
-        <!-- Botão ENTRAR -->
-        <button type="submit" class="login-btn">ENTRAR</button>
-      </form>
-
-      <div class="mt-5 text-center" style="color:#666;font-size:0.7rem;letter-spacing:0.05em;">
-        <span style="color:#D4AF37;">admin</span> / <span style="color:#D4AF37;">Admin@2026#Jam's</span>
       </div>
-    </div>
-  </div>
 
+      <!-- RIGHT SIDE PANEL -->
+      <aside class="side-panel animate-in-3" aria-label="Informações e calendário">
+        <!-- Calendar Card -->
+        <div class="panel-card calendar-card">
+          <div class="calendar-header">
+            <button class="calendar-nav" id="prevMonth" aria-label="Mês anterior" type="button">‹</button>
+            <span class="calendar-title" id="calendarTitle"></span>
+            <button class="calendar-nav" id="nextMonth" aria-label="Próximo mês" type="button">›</button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid">
+            <div class="calendar-day-name">Dom</div>
+            <div class="calendar-day-name">Seg</div>
+            <div class="calendar-day-name">Ter</div>
+            <div class="calendar-day-name">Qua</div>
+            <div class="calendar-day-name">Qui</div>
+            <div class="calendar-day-name">Sex</div>
+            <div class="calendar-day-name">Sáb</div>
+            <div id="calendarDays"></div>
+          </div>
+        </div>
+
+        <!-- Current Time Display -->
+        <div class="panel-card current-time-card" style="text-align:center;">
+          <div class="current-time-display" id="currentTimeDisplay">--:--:--</div>
+          <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">HORÁRIO ATUAL</div>
+        </div>
+
+        <!-- Welcome Card -->
+        <div class="panel-card welcome-card">
+          <div class="welcome-icon">👋</div>
+          <h2 class="welcome-title">Bem-vindo de Volta</h2>
+          <p class="welcome-text">Faça login para acessar seu painel de controle e gerenciar seu negócio com facilidade.</p>
+        </div>
+
+        <!-- Info Panel Card -->
+        <div class="panel-card info-panel-card">
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-icon">🕐</div>
+              <div class="info-content">
+                <div class="info-label">Horário de Funcionamento</div>
+                <div class="info-value">Seg-Sex: 11h-23h | Sáb-Dom: 11h-00h</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon">📍</div>
+              <div class="info-content">
+                <div class="info-label">Localização</div>
+                <div class="info-value">Av. Principal, 123 - Centro</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon">📞</div>
+              <div class="info-content">
+                <div class="info-label">Suporte</div>
+                <div class="info-value">(11) 99999-9999</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-icon">🔒</div>
+              <div class="info-content">
+                <div class="info-label">Sistema Seguro</div>
+                <div class="info-value">Criptografia de ponta a ponta</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script>
+// ==================== PARTICLES ====================
+function createParticles() {
+  const bg = document.getElementById('loginBg');
+  if (!bg) return;
+  const particleCount = 22;
+  for (let i = 0; i < particleCount; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 3 + 1.5;
+    const left = Math.random() * 100;
+    const delay = Math.random() * 10;
+    const duration = 8 + Math.random() * 8;
+    p.style.cssText = `
+      width: ${size}px;
+      height: ${size}px;
+      left: ${left}%;
+      animation: floatParticle ${duration}s linear ${delay}s infinite;
+      opacity: ${0.25 + Math.random() * 0.4};
+    `;
+    bg.appendChild(p);
+  }
+}
+
+// ==================== CALENDAR ====================
+const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+let calendarDate = new Date();
+calendarDate.setDate(1);
+
+function renderCalendar() {
+  const titleEl = document.getElementById('calendarTitle');
+  const daysEl = document.getElementById('calendarDays');
+  if (!titleEl || !daysEl) return;
+
+  titleEl.textContent = `${months[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
+
+  const firstDay = calendarDate.getDay();
+  const daysInMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate();
+  const prevMonthDays = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 0).getDate();
+
+  let html = '';
+
+  // Previous month trailing days
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="calendar-day empty other-month">${prevMonthDays - i}</div>`;
+  }
+
+  // Current month days
+  const today = new Date();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d === today.getDate() &&
+                    calendarDate.getMonth() === today.getMonth() &&
+                    calendarDate.getFullYear() === today.getFullYear();
+    const classes = ['calendar-day'];
+    if (isToday) classes.push('today');
+    html += `<div class="${classes.join(' ')}">${d}</div>`;
+  }
+
+  // Next month leading days
+  const totalCells = firstDay + daysInMonth;
+  const nextMonthDays = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= nextMonthDays; d++) {
+    html += `<div class="calendar-day empty other-month">${d}</div>`;
+  }
+
+  daysEl.innerHTML = html;
+}
+
+function prevMonth() {
+  calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1);
+  renderCalendar();
+}
+
+function nextMonth() {
+  calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1);
+  renderCalendar();
+}
+
+// ==================== CLOCK ====================
+function updateClock() {
+  const now = new Date();
+  const timeEl = document.getElementById('currentTimeDisplay');
+  if (timeEl) {
+    timeEl.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', function() {
+  createParticles();
+  renderCalendar();
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  const prevBtn = document.getElementById('prevMonth');
+  const nextBtn = document.getElementById('nextMonth');
+  if (prevBtn) prevBtn.addEventListener('click', prevMonth);
+  if (nextBtn) nextBtn.addEventListener('click', nextMonth);
+
+  // Keyboard navigation for calendar
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft' && document.activeElement === prevBtn) prevMonth();
+    if (e.key === 'ArrowRight' && document.activeElement === nextBtn) nextMonth();
+  });
+
+  // Form focus effects
+  document.querySelectorAll('.form-input').forEach(input => {
+    input.addEventListener('focus', function() {
+      this.parentElement.classList.add('focused');
+    });
+    input.addEventListener('blur', function() {
+      this.parentElement.classList.remove('focused');
+    });
+  });
+
+  // Reduce motion respect
+  const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (mediaQuery.matches) {
+    document.documentElement.style.setProperty('--animation-duration', '0.01ms');
+  }
+});
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

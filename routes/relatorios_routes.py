@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required
+from auth import login_required, admin_required
 
 
 def register_relatorios_routes(app):
@@ -28,7 +28,7 @@ def register_relatorios_routes(app):
         """, (inicio, fim)).fetchall()
         totais = db.execute("""
             SELECT COALESCE(SUM(valor_total),0) as total, COUNT(*) as qtd, COALESCE(AVG(valor_total),0) as ticket
-            FROM vendas WHERE date(data) BETWEEN ? AND ?
+            FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada'
         """, (inicio, fim)).fetchone()
         return jsonify({
             "vendas": [dict(v) for v in vendas],
@@ -45,7 +45,7 @@ def register_relatorios_routes(app):
             SELECT m.numero, COUNT(v.id) as pedidos, COALESCE(SUM(v.valor_total),0) as total,
                    COALESCE(AVG((julianday(v.data) - julianday(c.abertura)) * 24), 0) as horas_media
             FROM mesas m
-            LEFT JOIN vendas v ON v.mesa_id=m.id
+            LEFT JOIN vendas v ON v.mesa_id=m.id AND v.status != 'cancelada'
             LEFT JOIN comandas c ON v.comanda_id=c.id
             GROUP BY m.id ORDER BY total DESC
         """).fetchall()
@@ -59,13 +59,13 @@ def register_relatorios_routes(app):
             SELECT p.nome, SUM(iv.quantidade) as qtd, SUM(iv.subtotal) as total
             FROM itens_venda iv JOIN vendas v ON iv.venda_id=v.id
             JOIN produtos p ON iv.produto_id=p.id
-            WHERE date(v.data) >= date('now','-30 days')
+            WHERE date(v.data) >= date('now','-30 days') AND v.status != 'cancelada'
             GROUP BY p.id ORDER BY qtd DESC LIMIT 20
         """).fetchall()
         menos = db.execute("""
             SELECT p.nome, COALESCE(SUM(iv.quantidade),0) as qtd
             FROM produtos p LEFT JOIN itens_venda iv ON iv.produto_id=p.id
-            LEFT JOIN vendas v ON iv.venda_id=v.id AND date(v.data) >= date('now','-30 days')
+            LEFT JOIN vendas v ON iv.venda_id=v.id AND date(v.data) >= date('now','-30 days') AND v.status != 'cancelada'
             WHERE p.ativo=1 GROUP BY p.id ORDER BY qtd ASC LIMIT 20
         """).fetchall()
         sem_mov = db.execute("""
@@ -73,7 +73,7 @@ def register_relatorios_routes(app):
             WHERE p.ativo=1 AND p.id NOT IN (
                 SELECT DISTINCT produto_id FROM itens_venda iv
                 JOIN vendas v ON iv.venda_id=v.id
-                WHERE date(v.data) >= date('now','-30 days')
+                WHERE date(v.data) >= date('now','-30 days') AND v.status != 'cancelada'
             )
         """).fetchall()
         return jsonify({
@@ -94,7 +94,7 @@ def register_relatorios_routes(app):
             FROM itens_venda iv JOIN vendas v ON iv.venda_id=v.id
             JOIN produtos p ON iv.produto_id=p.id
             LEFT JOIN categorias c ON p.categoria_id=c.id
-            WHERE date(v.data) BETWEEN ? AND ?
+            WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada'
             GROUP BY p.id ORDER BY total DESC
         """, (inicio, fim)).fetchall()
         return jsonify([dict(r) for r in rows])
@@ -110,7 +110,7 @@ def register_relatorios_routes(app):
             FROM itens_venda iv JOIN vendas v ON iv.venda_id=v.id
             JOIN produtos p ON iv.produto_id=p.id
             LEFT JOIN categorias c ON p.categoria_id=c.id
-            WHERE date(v.data) BETWEEN ? AND ?
+            WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada'
             GROUP BY c.id ORDER BY total DESC
         """, (inicio, fim)).fetchall()
         return jsonify([dict(r) for r in rows])
@@ -126,20 +126,20 @@ def register_relatorios_routes(app):
             FROM vendas v
             LEFT JOIN comandas c ON v.comanda_id=c.id
             LEFT JOIN garcons g ON c.garcom_id=g.id
-            WHERE v.tipo='mesa' AND date(v.data) BETWEEN ? AND ?
+            WHERE v.tipo='mesa' AND date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada'
             GROUP BY g.id ORDER BY total DESC
         """, (inicio, fim)).fetchall()
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/fluxo_caixa")
-    @login_required
+    @admin_required
     def api_rel_fluxo_caixa():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
         fim = request.args.get("fim", date.today().isoformat())
         vendas = db.execute("""
             SELECT SUM(valor_total) as total, COUNT(*) as qtd
-            FROM vendas WHERE date(data) BETWEEN ? AND ?
+            FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada'
         """, (inicio, fim)).fetchone()
         suprimentos = db.execute("""
             SELECT COALESCE(SUM(valor),0) as total FROM suprimento_sangria
@@ -157,7 +157,7 @@ def register_relatorios_routes(app):
         })
 
     @app.route("/api/relatorios/sangrias")
-    @login_required
+    @admin_required
     def api_rel_sangrias():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
@@ -171,7 +171,7 @@ def register_relatorios_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/suprimentos")
-    @login_required
+    @admin_required
     def api_rel_suprimentos():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())

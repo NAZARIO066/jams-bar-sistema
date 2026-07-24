@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Centro de Manutenção{% endblock %}
+{% block page_title %}🛠 Centro de Manutenção{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto">
+  <div class="mb-6">
+    <p class="text-sm" style="color:#999;">Gerencie backups, diagnósticos, limpeza e migração do sistema.</p>
+  </div>
+
+  <!-- Dashboard Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="kpi-card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="kpi-icon">💾</div>
+        <span class="kpi-label">Backups</span>
+      </div>
+      <div class="kpi-value">{{ stats.total_backups }}</div>
+      <div class="text-xs mt-1" style="color:#666;">
+        {% if stats.data_backup_mais_recente %}
+          Último: {{ stats.data_backup_mais_recente }}
+        {% else %}
+          Nenhum backup
+        {% endif %}
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="kpi-icon" style="background:rgba({{ '22,163,74' if stats.integridade_ok else '220,38,38' }},0.1);color:{{ '#4ade80' if stats.integridade_ok else '#f87171' }};">{{ '✔' if stats.integridade_ok else '✘' }}</div>
+        <span class="kpi-label">Banco</span>
+      </div>
+      <div class="kpi-value" style="font-size:1.2rem;">{{ 'Íntegro' if stats.integridade_ok else 'Com problemas' if stats.integridade_ok is not none else 'Verificar' }}</div>
+      <div class="text-xs mt-1" style="color:#666;">Última análise: {{ stats.ultima_analise or 'N/A' }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="kpi-icon" style="background:rgba(212,175,55,0.1);color:#D4AF37;">📊</div>
+        <span class="kpi-label">Tabelas</span>
+      </div>
+      <div class="kpi-value">{{ stats.total_tabelas }}</div>
+      <div class="text-xs mt-1" style="color:#666;">{{ stats.total_registros }} registro(s) total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="kpi-icon" style="background:rgba(96,165,250,0.1);color:#60a5fa;">💽</div>
+        <span class="kpi-label">Espaço</span>
+      </div>
+      <div class="kpi-value" style="font-size:1.2rem;">{{ stats.espaco_banco_mb }} MB</div>
+      <div class="text-xs mt-1" style="color:#666;">Livres: {{ stats.espaco_livre_mb }} MB | Backups: {{ stats.espaco_backups_mb }} MB</div>
+    </div>
+  </div>
+
+  <!-- Saude do Banco -->
+  {% set saude_cor = '#4ade80' if stats.saude == 'Excelente' else '#60a5fa' if stats.saude == 'Boa' else '#fbbf24' if stats.saude == 'Atenção' else '#f87171' %}
+  {% set saude_bg = '22,163,74' if stats.saude == 'Excelente' else '96,165,250' if stats.saude == 'Boa' else '251,191,36' if stats.saude == 'Atenção' else '220,38,38' %}
+  <div class="card mb-8" style="border-left:4px solid {{ saude_cor }};">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style="background:rgba({{ saude_bg }},0.1);color:{{ saude_cor }};">
+          {{ '✓' if stats.saude == 'Excelente' else '●' if stats.saude == 'Boa' else '⚠' if stats.saude == 'Atenção' else '✕' }}
+        </div>
+        <div>
+          <div class="font-bold text-lg" style="color:#fff;">Saúde do Banco: <span style="color:{{ saude_cor }};">{{ stats.saude }}</span></div>
+          <div class="text-sm" style="color:#999;">Pontuação: {{ stats.saude_pontos }}/100</div>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs" style="color:#666;">
+          {% if stats.integridade_ok %}Integridade OK{% else %}Integridade com problemas{% endif %}
+        </div>
+        <div class="text-xs" style="color:#666;">{{ stats.total_backups }} backup(s)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Module Cards -->
+  <h3 class="text-sm font-bold mb-4" style="color:#D4AF37;letter-spacing:0.05em;text-transform:uppercase;">Módulos</h3>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <a href="/manutencao/backup" class="card" style="text-decoration:none;color:inherit;">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style="background:rgba(22,163,74,0.1);color:#4ade80;">💾</div>
+        <div>
+          <div class="font-bold text-lg" style="color:#fff;">Backup</div>
+          <div class="text-sm" style="color:#999;">Criar, restaurar, download e histórico de backups</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="/manutencao/banco" class="card" style="text-decoration:none;color:inherit;">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style="background:rgba(212,175,55,0.1);color:#D4AF37;">🗄</div>
+        <div>
+          <div class="font-bold text-lg" style="color:#fff;">Banco de Dados</div>
+          <div class="text-sm" style="color:#999;">Diagnóstico completo, integridade, estatísticas e manutenção</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="/manutencao/auditoria" class="card" style="text-decoration:none;color:inherit;">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style="background:rgba(168,85,247,0.1);color:#a855f7;">📋</div>
+        <div>
+          <div class="font-bold text-lg" style="color:#fff;">Auditoria</div>
+          <div class="text-sm" style="color:#999;">Histórico técnico de operações de manutenção</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="/manutencao/limpeza" class="card" style="text-decoration:none;color:inherit;">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style="background:rgba(251,146,60,0.1);color:#fb923c;">🧹</div>
+        <div>
+          <div class="font-bold text-lg" style="color:#fff;">Limpeza</div>
+          <div class="text-sm" style="color:#999;">Limpar dados do sistema e reset inteligente</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="/manutencao/migracao" class="card" style="text-decoration:none;color:inherit;">
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style="background:rgba(96,165,250,0.1);color:#60a5fa;">🔄</div>
+        <div>
+          <div class="font-bold text-lg" style="color:#fff;">Migração</div>
+          <div class="text-sm" style="color:#999;">Assistente de migração e atalhos</div>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</div>
+{% endblock %}

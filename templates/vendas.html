@@ -30,6 +30,16 @@
         <input id="acrescimo" type="number" step="0.01" value="0" class="w-24 px-2 py-1 rounded text-right" oninput="atualizar()">
       </div>
       <div class="flex justify-between text-xl font-bold text-brand-500 border-t border-ink-700 pt-2"><span>Total</span><span id="total">R$ 0,00</span></div>
+      <div id="troco-section" class="hidden">
+        <div class="flex justify-between items-center text-sm mt-2">
+          <span>💰 Valor Recebido</span>
+          <input id="valor-recebido" type="number" step="0.01" value="0" class="w-24 px-2 py-1 rounded text-right" oninput="calcularTroco()">
+        </div>
+        <div class="flex justify-between items-center text-sm mt-1">
+          <span>🔄 Troco</span>
+          <span id="troco" class="font-bold text-green-400">R$ 0,00</span>
+        </div>
+      </div>
       <select id="forma" class="w-full px-3 py-2 rounded" onchange="toggleFiado()">
         <option>Dinheiro</option><option>PIX</option><option>Crédito</option><option>Débito</option>
         <option value="Fiado">📒 Fiado</option>
@@ -145,6 +155,9 @@ function atualizar() {
   document.getElementById('sub').textContent = fmtMoeda(sub);
   document.getElementById('total').textContent = fmtMoeda(Math.max(0, sub - desc + acrc));
   document.getElementById('btn-final').disabled = carrinho.length === 0;
+  if (document.getElementById('forma').value === 'Dinheiro') {
+    calcularTroco();
+  }
 }
 
 async function finalizar() {
@@ -162,13 +175,32 @@ async function finalizar() {
   const d = await r.json();
   if (d.ok) {
     toast(`Venda #${d.venda_id} finalizada! ${fmtMoeda(d.total)}`);
-    carrinho = []; document.getElementById('desconto').value = 0; document.getElementById('acrescimo').value = 0; document.getElementById('cli-id').value = ''; document.getElementById('cli-escolhido').classList.add('hidden'); render();
+    carrinho = []; document.getElementById('desconto').value = 0; document.getElementById('acrescimo').value = 0; document.getElementById('valor-recebido').value = 0; document.getElementById('troco-section').classList.add('hidden'); document.getElementById('cli-id').value = ''; document.getElementById('cli-escolhido').classList.add('hidden'); render();
   } else toast(d.erro || 'Erro', 'error');
 }
 
 function toggleFiado() {
   const f = document.getElementById('forma').value;
   document.getElementById('box-fiado').classList.toggle('hidden', f !== 'Fiado');
+  document.getElementById('troco-section').classList.toggle('hidden', f !== 'Dinheiro');
+  if (f === 'Dinheiro') {
+    calcularTroco();
+  }
+}
+
+function calcularTroco() {
+  const totalText = document.getElementById('total').textContent;
+  const total = parseFloat(totalText.replace('R$ ', '').replace('.', '').replace(',', '.')) || 0;
+  const recebido = parseFloat(document.getElementById('valor-recebido').value) || 0;
+  const troco = Math.max(0, recebido - total);
+  document.getElementById('troco').textContent = fmtMoeda(troco);
+  if (recebido > 0 && recebido < total) {
+    document.getElementById('troco').classList.remove('text-green-400');
+    document.getElementById('troco').classList.add('text-red-400');
+  } else {
+    document.getElementById('troco').classList.remove('text-red-400');
+    document.getElementById('troco').classList.add('text-green-400');
+  }
 }
 
 async function buscarCliente() {

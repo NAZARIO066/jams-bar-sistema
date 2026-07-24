@@ -10,7 +10,9 @@
 
 <div class="flex gap-2 mb-4 flex-wrap">
   <input id="busca" placeholder="🔍 Buscar cliente (nome, CPF, telefone)..." class="flex-1 px-3 py-2 rounded" oninput="listar()">
+  {% if session.get('usuario_nivel') == 'admin' %}
   <button onclick="abrir()" class="btn btn-primary">+ Novo Cliente</button>
+  {% endif %}
 </div>
 
 <div class="card overflow-auto">
@@ -63,12 +65,14 @@
         <div id="f-saldo" class="text-3xl font-bold text-red-400">R$ 0,00</div>
       </div>
       <div class="border-t border-ink-700 pt-3">
+        {% if session.get('usuario_nivel') == 'admin' %}
         <h4 class="font-semibold mb-2">💰 Registrar Pagamento</h4>
         <div class="flex gap-2">
           <input id="pg-valor" type="number" step="0.01" placeholder="Valor" class="flex-1 px-3 py-2 rounded">
           <input id="pg-obs" placeholder="Observação" class="flex-1 px-3 py-2 rounded">
           <button onclick="pagar()" class="btn btn-success">Pagar</button>
         </div>
+        {% endif %}
       </div>
       <div class="border-t border-ink-700 pt-3">
         <h4 class="font-semibold mb-2">📜 Histórico</h4>
@@ -81,6 +85,7 @@
 {% block scripts %}
 <script>
 let clienteFiadoId = null;
+const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
 
 async function listar() {
   const q = document.getElementById('busca').value.toLowerCase();
@@ -117,8 +122,10 @@ async function listar() {
       <td>${corStatus}</td>
       <td class="text-right whitespace-nowrap">
         <button onclick="verFiado(${c.id})" class="text-yellow-400 mr-2" title="Fiado">💰</button>
+        ${isAdmin ? `
         <button onclick="editar(${c.id})" class="text-blue-400 mr-2" title="Editar">✏</button>
         <button onclick="excluir(${c.id})" class="text-red-400" title="Desativar">🗑</button>
+        ` : ''}
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" class="text-slate-400 text-center py-6">Nenhum cliente</td></tr>';
@@ -174,10 +181,6 @@ async function salvar(e) {
   } else {
     // update
     await fetch('/api/clientes/' + cid, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
-    const novo_saldo = parseFloat(document.getElementById('saldo').value) || 0;
-    if (novo_saldo !== undefined) {
-      // ajuste manual via movimentação não implementado; só alerta
-    }
     toast('Cliente atualizado!'); fechar(); listar();
   }
 }

@@ -28,3 +28,14 @@ def tem_fiado_vencido(cliente_id):
         AND data_vencimento IS NOT NULL AND data_vencimento < ?
     """, (cliente_id, hoje)).fetchone()["c"]
     return bool(vencido)
+
+
+def recalcular_saldo_devedor(cliente_id):
+    db = get_db()
+    row = db.execute("""
+        SELECT COALESCE(SUM(valor - valor_pago), 0) as saldo
+        FROM fiado WHERE cliente_id=? AND tipo='compra' AND (valor - valor_pago) > 0.01
+    """, (cliente_id,)).fetchone()
+    saldo = max(0, round(row["saldo"], 2))
+    db.execute("UPDATE clientes SET saldo_devedor=? WHERE id=?", (saldo, cliente_id))
+    return saldo

@@ -1,6 +1,6 @@
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, log_auditoria
+from auth import login_required, admin_required, log_auditoria
 from datetime import date
 
 
@@ -20,7 +20,7 @@ def register_caixa_routes(app):
             return jsonify({"aberto": False})
         resumo = db.execute("""
             SELECT COUNT(*) as qtd, COALESCE(SUM(valor_total),0) as total
-            FROM vendas WHERE date(data)=date(?) AND usuario_id=?
+            FROM vendas WHERE date(data)=date(?) AND usuario_id=? AND status != 'cancelada'
         """, (cx["abertura"], session["usuario_id"])).fetchone()
         return jsonify({
             "aberto": True,
@@ -29,7 +29,7 @@ def register_caixa_routes(app):
         })
 
     @app.route("/api/caixa/abrir", methods=["POST"])
-    @login_required
+    @admin_required
     def api_caixa_abrir():
         db = get_db()
         aberto = db.execute("SELECT id FROM caixas WHERE usuario_id=? AND fechamento IS NULL", (session["usuario_id"],)).fetchone()
@@ -42,14 +42,14 @@ def register_caixa_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/caixa/fechar", methods=["POST"])
-    @login_required
+    @admin_required
     def api_caixa_fechar():
         db = get_db()
         d = request.json or {}
         cx = db.execute("SELECT * FROM caixas WHERE usuario_id=? AND fechamento IS NULL ORDER BY id DESC LIMIT 1", (session["usuario_id"],)).fetchone()
         if not cx:
             return jsonify({"ok": False, "erro": "Nenhum caixa aberto"}), 400
-        total = db.execute("SELECT COALESCE(SUM(valor_total),0) as t, COUNT(*) as c FROM vendas WHERE date(data)=date(?) AND usuario_id=?", (cx["abertura"], session["usuario_id"])).fetchone()
+        total = db.execute("SELECT COALESCE(SUM(valor_total),0) as t, COUNT(*) as c FROM vendas WHERE date(data)=date(?) AND usuario_id=? AND status != 'cancelada'", (cx["abertura"], session["usuario_id"])).fetchone()
         valor_final = float(d.get("valor_final", 0))
         sup = db.execute("SELECT COALESCE(SUM(valor),0) as t FROM suprimento_sangria WHERE caixa_id=? AND tipo='suprimento'", (cx["id"],)).fetchone()["t"]
         sang = db.execute("SELECT COALESCE(SUM(valor),0) as t FROM suprimento_sangria WHERE caixa_id=? AND tipo='sangria'", (cx["id"],)).fetchone()["t"]
@@ -64,7 +64,7 @@ def register_caixa_routes(app):
         return jsonify({"ok": True, "total": total["t"], "qtd": total["c"], "diferenca": diferenca, "esperado": valor_esperado, "valor_final": valor_final})
 
     @app.route("/api/caixa/suprimento", methods=["POST"])
-    @login_required
+    @admin_required
     def api_caixa_suprimento():
         db = get_db()
         d = request.json or {}
@@ -83,7 +83,7 @@ def register_caixa_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/caixa/sangria", methods=["POST"])
-    @login_required
+    @admin_required
     def api_caixa_sangria():
         db = get_db()
         d = request.json or {}

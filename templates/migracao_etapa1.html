@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Migração de Dados{% endblock %}
+{% block page_title %}🔄 Assistente de Migração{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <!-- Wizard Steps Indicator -->
+  <div class="flex items-center justify-center gap-0 mb-8 mt-4">
+    <div class="wz-step wz-step-active">
+      <div class="wz-circle">1</div>
+      <span class="wz-label">Origem</span>
+    </div>
+    <div class="wz-line wz-line-inactive"></div>
+    <div class="wz-step">
+      <div class="wz-circle wz-circle-muted">2</div>
+      <span class="wz-label wz-label-muted">Upload</span>
+    </div>
+    <div class="wz-line wz-line-inactive"></div>
+    <div class="wz-step">
+      <div class="wz-circle wz-circle-muted">3</div>
+      <span class="wz-label wz-label-muted">Confirmação</span>
+    </div>
+  </div>
+
+  <div class="card animate-fade-in">
+    <div class="mb-6">
+      <h2 class="text-xl font-bold mb-1" style="color:#D4AF37;">Escolha a Origem dos Dados</h2>
+      <p class="text-sm" style="color:#999;">Selecione o tipo de arquivo que deseja importar para o sistema.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="source-options">
+      <button onclick="selecionar('sqlite')" class="wz-source-card" id="opt-sqlite" data-tipo="sqlite">
+        <div class="wz-source-icon">🗄️</div>
+        <div class="wz-source-name">SQLite</div>
+        <div class="wz-source-desc">Banco de dados .db, .sqlite, .sqlite3</div>
+      </button>
+
+      <button onclick="selecionar('sql')" class="wz-source-card" id="opt-sql" data-tipo="sql">
+        <div class="wz-source-icon">📜</div>
+        <div class="wz-source-name">SQL Dump</div>
+        <div class="wz-source-desc">Arquivo .sql com comandos SQL</div>
+      </button>
+
+      <button onclick="selecionar('excel')" class="wz-source-card" id="opt-excel" data-tipo="excel">
+        <div class="wz-source-icon">📊</div>
+        <div class="wz-source-name">Excel</div>
+        <div class="wz-source-desc">Planilha .xlsx ou .xls</div>
+      </button>
+
+      <button onclick="selecionar('csv')" class="wz-source-card" id="opt-csv" data-tipo="csv">
+        <div class="wz-source-icon">📋</div>
+        <div class="wz-source-name">CSV</div>
+        <div class="wz-source-desc">Arquivo .csv separado por vírgulas</div>
+      </button>
+    </div>
+
+    <div id="error-msg" class="hidden mt-4 p-3 rounded-lg text-sm" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function selecionar(tipo) {
+  document.querySelectorAll('.wz-source-card').forEach(c => c.classList.remove('wz-source-selected'));
+  const card = document.getElementById('opt-' + tipo);
+  if (card) {
+    card.classList.add('wz-source-selected');
+    setTimeout(function() {
+      window.location.href = '/migracao/etapa2?tipo=' + tipo;
+    }, 300);
+  }
+}
+</script>
+{% endblock %}

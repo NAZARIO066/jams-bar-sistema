@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}Migração — Upload{% endblock %}
+{% block page_title %}🔄 Assistente de Migração{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <!-- Wizard Steps Indicator -->
+  <div class="flex items-center justify-center gap-0 mb-8 mt-4">
+    <div class="wz-step wz-step-done">
+      <div class="wz-circle wz-circle-done">✓</div>
+      <span class="wz-label">Origem</span>
+    </div>
+    <div class="wz-line wz-line-done"></div>
+    <div class="wz-step wz-step-active">
+      <div class="wz-circle">2</div>
+      <span class="wz-label">Upload</span>
+    </div>
+    <div class="wz-line wz-line-inactive"></div>
+    <div class="wz-step">
+      <div class="wz-circle wz-circle-muted">3</div>
+      <span class="wz-label wz-label-muted">Confirmação</span>
+    </div>
+  </div>
+
+  <div class="card animate-fade-in">
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-2">
+        <a href="/migracao/etapa1" class="text-sm" style="color:#D4AF37;text-decoration:none;">← Voltar</a>
+        <span class="badge badge-gold" id="tipo-badge">{{ tipo|upper }}</span>
+      </div>
+      <h2 class="text-xl font-bold mb-1" style="color:#D4AF37;">Upload do Arquivo</h2>
+      <p class="text-sm" style="color:#999;">Selecione o arquivo de dados para importar.</p>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="wz-dropzone" id="dropzone"
+         ondragover="event.preventDefault();this.classList.add('wz-dropzone-hover')"
+         ondragleave="this.classList.remove('wz-dropzone-hover')"
+         ondrop="event.preventDefault();this.classList.remove('wz-dropzone-hover');handleFile(event.dataTransfer.files[0])">
+      <div class="wz-dropzone-icon">📁</div>
+      <div class="wz-dropzone-text">Arraste o arquivo aqui</div>
+      <div class="wz-dropzone-sub">ou clique para selecionar</div>
+      <input type="file" id="file-input" class="hidden"
+             accept=".db,.sqlite,.sqlite3,.sql,.xlsx,.xls,.csv"
+             onchange="handleFile(this.files[0])">
+      <button class="btn btn-primary mt-3" onclick="document.getElementById('file-input').click()">Selecionar Arquivo</button>
+    </div>
+
+    <!-- Upload Progress -->
+    <div id="upload-progress" class="hidden mt-4">
+      <div class="wz-progress-bar">
+        <div class="wz-progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="text-sm mt-2 text-center" style="color:#999;" id="progress-text">Enviando...</div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-msg" class="hidden mt-4 p-3 rounded-lg text-sm" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);"></div>
+
+    <!-- Success Preview -->
+    <div id="success-preview" class="hidden mt-4">
+      <div class="wz-file-info">
+        <div class="wz-file-row"><span class="wz-file-label">Arquivo:</span><span id="info-nome" class="wz-file-value"></span></div>
+        <div class="wz-file-row"><span class="wz-file-label">Tipo:</span><span id="info-tipo" class="wz-file-value"><span class="badge badge-gold"></span></span></div>
+        <div class="wz-file-row"><span class="wz-file-label">Tamanho:</span><span id="info-tamanho" class="wz-file-value"></span></div>
+        <div class="wz-file-row"><span class="wz-file-label">Data:</span><span id="info-data" class="wz-file-value"></span></div>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button onclick="analisar()" class="btn btn-primary flex-1" id="btn-analisar">Analisar →</button>
+        <a href="/migracao/etapa1" class="btn btn-secondary flex-1 text-center">Voltar</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const tipo = '{{ tipo }}';
+
+function handleFile(file) {
+  if (!file) return;
+  showError(null);
+  document.getElementById('success-preview').classList.add('hidden');
+  document.getElementById('upload-progress').classList.remove('hidden');
+
+  const fd = new FormData();
+  fd.append('arquivo', file);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/migracao/etapa2', true);
+
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-text').textContent = 'Enviando... ' + pct + '%';
+    }
+  };
+
+  xhr.onload = function() {
+    document.getElementById('upload-progress').classList.add('hidden');
+    const resp = JSON.parse(xhr.responseText);
+    if (xhr.status === 200 && resp.ok) {
+      showSuccess(resp);
+    } else {
+      showError(resp.erro || 'Erro ao enviar arquivo');
+    }
+  };
+
+  xhr.onerror = function() {
+    document.getElementById('upload-progress').classList.add('hidden');
+    showError('Erro de conexão');
+  };
+
+  xhr.send(fd);
+}
+
+function showSuccess(d) {
+  document.getElementById('info-nome').textContent = d.nome;
+  document.getElementById('info-tipo').innerHTML = '<span class="badge badge-gold">' + (d.tipo || tipo).toUpperCase() + '</span>';
+  document.getElementById('info-tamanho').textContent = d.tamanho_mb + ' MB';
+  document.getElementById('info-data').textContent = d.data;
+  document.getElementById('success-preview').classList.remove('hidden');
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  if (!msg) { el.classList.add('hidden'); return; }
+  el.textContent = '❌ ' + msg;
+  el.classList.remove('hidden');
+}
+
+document.getElementById('dropzone').addEventListener('click', function(e) {
+  if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+    document.getElementById('file-input').click();
+  }
+});
+
+async function analisar() {
+  const btn = document.getElementById('btn-analisar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analisando...';
+  try {
+    const r = await fetch('/api/migracao/analisar', { method: 'POST', headers: {'Content-Type':'application/json'} });
+    const d = await r.json();
+    if (d.ok) {
+      window.location.href = '/migracao/etapa3';
+    } else {
+      showError(d.erro || 'Erro na análise');
+      btn.disabled = false;
+      btn.textContent = 'Analisar →';
+    }
+  } catch(e) {
+    showError('Erro de conexão na análise');
+    btn.disabled = false;
+    btn.textContent = 'Analisar →';
+  }
+}
+</script>
+{% endblock %}

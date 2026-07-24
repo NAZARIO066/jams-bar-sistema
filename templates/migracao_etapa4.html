@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block title %}Migração — Confirmação{% endblock %}
+{% block page_title %}🔄 Assistente de Migração{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <!-- Wizard Steps Indicator -->
+  <div class="flex items-center justify-center gap-0 mb-8 mt-4">
+    <div class="wz-step wz-step-done">
+      <div class="wz-circle wz-circle-done">✓</div>
+      <span class="wz-label">Origem</span>
+    </div>
+    <div class="wz-line wz-line-done"></div>
+    <div class="wz-step wz-step-done">
+      <div class="wz-circle wz-circle-done">✓</div>
+      <span class="wz-label">Upload</span>
+    </div>
+    <div class="wz-line wz-line-done"></div>
+    <div class="wz-step wz-step-done">
+      <div class="wz-circle wz-circle-done">✓</div>
+      <span class="wz-label">Análise</span>
+    </div>
+    <div class="wz-line wz-line-done"></div>
+    <div class="wz-step wz-step-active">
+      <div class="wz-circle">4</div>
+      <span class="wz-label">Confirmação</span>
+    </div>
+  </div>
+
+  <div class="card animate-fade-in">
+    <div class="mb-6">
+      <h2 class="text-xl font-bold mb-1" style="color:#D4AF37;">Confirmar Importação</h2>
+      <p class="text-sm" style="color:#999;">Verifique os dados do arquivo antes de prosseguir.</p>
+    </div>
+
+    <!-- File Summary -->
+    <div class="wz-confirm-panel">
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📄 Nome do Arquivo</span>
+        <span class="wz-confirm-value font-bold">{{ dados.arquivo.nome_original }}</span>
+      </div>
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">🏷️ Tipo</span>
+        <span class="wz-confirm-value"><span class="badge badge-gold">{{ dados.tipo_fonte|upper }}</span></span>
+      </div>
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📦 Tamanho</span>
+        <span class="wz-confirm-value">{{ dados.arquivo.tamanho_mb }} MB</span>
+      </div>
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📅 Data do Upload</span>
+        <span class="wz-confirm-value">{{ dados.data_upload }}</span>
+      </div>
+      {% if dados.analise %}
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📊 Registros</span>
+        <span class="wz-confirm-value">{{ dados.analise.total_registros }} registro(s)</span>
+      </div>
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">📋 Tabelas</span>
+        <span class="wz-confirm-value">{{ dados.analise.tabelas|length }} encontrada(s)</span>
+      </div>
+      {% endif %}
+      {% if dados.validacao %}
+      <div class="wz-confirm-row">
+        <span class="wz-confirm-label">✅ Validação</span>
+        <span class="wz-confirm-value" style="color:#4ade80;">Arquivo validado com sucesso</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Warning -->
+    <div class="wz-warning-box mt-4">
+      <div class="wz-warning-icon">⚠️</div>
+      <div>
+        <div class="font-bold text-sm mb-1">Antes de continuar:</div>
+        <ul class="text-xs space-y-1" style="color:#fbbf24;">
+          <li>• Um backup automático do banco atual será criado</li>
+          <li>• Os dados serão importados sobre os dados existentes</li>
+          <li>• Esta ação não pode ser desfeita facilmente</li>
+          <li>• Recomendamos verificar os dados do arquivo primeiro</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Compatibility Summary -->
+    {% if compat %}
+    <div class="mt-4">
+      <div class="wz-confirm-panel">
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label">📊 Compatibilidade</span>
+          <span class="wz-confirm-value">
+            <span style="color:{% if compat.compatibilidade_index >= 90 %}#4ade80{% elif compat.compatibilidade_index >= 70 %}#D4AF37{% elif compat.compatibilidade_index >= 50 %}#fb923c{% else %}#f87171{% endif %};font-weight:bold;">{{ compat.compatibilidade_index }}%</span>
+            <span class="badge" style="margin-left:0.5rem;background:{% if compat.compatibilidade_index >= 90 %}rgba(74,222,128,0.15);color:#4ade80{% elif compat.compatibilidade_index >= 70 %}rgba(212,175,55,0.15);color:#D4AF37{% elif compat.compatibilidade_index >= 50 %}rgba(251,146,60,0.15);color:#fb923c{% else %}rgba(248,113,113,0.15);color:#f87171{% endif %};">{{ compat.classificacao }}</span>
+          </span>
+        </div>
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label">📋 Tabelas mapeadas</span>
+          <span class="wz-confirm-value">{{ compat.total_tabelas_mapeadas }}/{{ compat.total_tabelas_esperadas }}</span>
+        </div>
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label">📦 Registros</span>
+          <span class="wz-confirm-value">{{ compat.total_registros }}</span>
+        </div>
+        {% if compat.criticos > 0 %}
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label" style="color:#f87171;">✖ Erros críticos</span>
+          <span class="wz-confirm-value" style="color:#f87171;">{{ compat.criticos }} — importação bloqueada</span>
+        </div>
+        {% endif %}
+        {% if compat.avisos > 0 %}
+        <div class="wz-confirm-row">
+          <span class="wz-confirm-label" style="color:#fbbf24;">⚠ Avisos</span>
+          <span class="wz-confirm-value" style="color:#fbbf24;">{{ compat.avisos }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Import Blocked Warning -->
+    {% if not pode_importar %}
+    <div class="p-3 rounded-lg text-sm mt-4" style="background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);">
+      ✖ <strong>Importação bloqueada</strong> — Existem erros críticos de compatibilidade que impedem a importação segura. Volte à etapa anterior e verifique o relatório.
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="flex gap-3 mt-6">
+      {% if pode_importar %}
+      <button onclick="confirmar()" class="btn btn-primary flex-1" id="btn-confirmar">
+        ✅ Continuar Importação
+      </button>
+      {% else %}
+      <button class="btn btn-secondary flex-1" id="btn-confirmar" disabled style="opacity:0.5;cursor:not-allowed;">
+        ✖ Importação Bloqueada
+      </button>
+      {% endif %}
+      <a href="/migracao/etapa3" class="btn btn-secondary flex-1 text-center">← Voltar</a>
+      <button onclick="cancelar()" class="btn btn-danger">✕ Cancelar</button>
+    </div>
+
+    <div id="status-msg" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function confirmar() {
+  const btn = document.getElementById('btn-confirmar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processando...';
+  showStatus('Criando backup e iniciando importação...', 'info');
+
+  try {
+    const r = await fetch('/api/migracao/confirmar', { method: 'POST', headers: {'Content-Type':'application/json'} });
+    const d = await r.json();
+    if (d.ok) {
+      showStatus('✅ Importação concluída!', 'success');
+      setTimeout(function() { window.location.href = '/migracao/etapa1'; }, 2000);
+    } else {
+      showStatus('❌ ' + (d.erro || 'Erro na importação'), 'error');
+      btn.disabled = false;
+      btn.textContent = '✅ Continuar Importação';
+    }
+  } catch(e) {
+    showStatus('❌ Erro de conexão', 'error');
+    btn.disabled = false;
+    btn.textContent = '✅ Continuar Importação';
+  }
+}
+
+async function cancelar() {
+  if (!confirm('Cancelar a migração? O arquivo temporário será removido.')) return;
+  try { await fetch('/api/migracao/cancelar', { method: 'POST' }); } catch(e) {}
+  window.location.href = '/migracao/etapa1';
+}
+
+function showStatus(msg, tipo) {
+  const el = document.getElementById('status-msg');
+  el.classList.remove('hidden');
+  if (tipo === 'error') {
+    el.style.background = 'rgba(220,38,38,0.12)';
+    el.style.color = '#f87171';
+    el.style.border = '1px solid rgba(220,38,38,0.2)';
+  } else if (tipo === 'success') {
+    el.style.background = 'rgba(22,163,74,0.12)';
+    el.style.color = '#4ade80';
+    el.style.border = '1px solid rgba(22,163,74,0.2)';
+  } else {
+    el.style.background = 'rgba(212,175,55,0.12)';
+    el.style.color = '#D4AF37';
+    el.style.border = '1px solid rgba(212,175,55,0.2)';
+  }
+  el.textContent = msg;
+}
+</script>
+{% endblock %}

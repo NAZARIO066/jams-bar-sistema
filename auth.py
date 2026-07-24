@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from flask import request, session, g
 from functools import wraps
 from database import get_db
-import threading
 
 def check_login_rate_limit(login):
     db = get_db()

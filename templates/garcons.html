@@ -49,8 +49,10 @@ async function listar() {
       <td>${g.comissao > 0 ? g.comissao + '%' : '—'}</td>
       <td>${g.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-red">Inativo</span>'}</td>
       <td class="text-right">
+        {% if session.get('usuario_nivel') == 'admin' %}
         <button onclick="editar(${g.id})" class="text-blue-400 mr-2">✏</button>
         <button onclick="excluir(${g.id})" class="text-red-400">🗑</button>
+        {% endif %}
       </td>
     </tr>
   `).join('') || '<tr><td colspan="5" class="text-slate-400 text-center py-6">Nenhum garçom cadastrado</td></tr>';

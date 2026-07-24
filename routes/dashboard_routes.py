@@ -19,18 +19,18 @@ def register_dashboard_routes(app):
         inicio_mes = date.today().replace(day=1).isoformat()
 
         vendas_dia = db.execute(
-            "SELECT COALESCE(SUM(valor_total),0) as t, COUNT(*) as c FROM vendas WHERE date(data)=?", (hoje,)
+            "SELECT COALESCE(SUM(valor_total),0) as t, COUNT(*) as c FROM vendas WHERE date(data)=? AND status != 'cancelada'", (hoje,)
         ).fetchone()
 
         faturamento_mes = db.execute(
-            "SELECT COALESCE(SUM(valor_total),0) as t FROM vendas WHERE date(data)>=?", (inicio_mes,)
+            "SELECT COALESCE(SUM(valor_total),0) as t FROM vendas WHERE date(data)>=? AND status != 'cancelada'", (inicio_mes,)
         ).fetchone()["t"]
 
         status_mesas = {r["status"]: r["c"] for r in
             db.execute("SELECT status, COUNT(*) as c FROM mesas GROUP BY status").fetchall()}
 
         produtos_vendidos = db.execute(
-            "SELECT COALESCE(SUM(quantidade),0) as q FROM itens_venda iv JOIN vendas v ON iv.venda_id=v.id WHERE date(v.data)=?",
+            "SELECT COALESCE(SUM(quantidade),0) as q FROM itens_venda iv JOIN vendas v ON iv.venda_id=v.id WHERE date(v.data)=? AND v.status != 'cancelada'",
             (hoje,)
         ).fetchone()["q"]
 
@@ -42,17 +42,17 @@ def register_dashboard_routes(app):
             SELECT p.nome, SUM(iv.quantidade) as qtd, SUM(iv.subtotal) as total
             FROM itens_venda iv JOIN vendas v ON iv.venda_id=v.id
             JOIN produtos p ON iv.produto_id=p.id
-            WHERE date(v.data)=? GROUP BY p.id ORDER BY qtd DESC LIMIT 5
+            WHERE date(v.data)=? AND v.status != 'cancelada' GROUP BY p.id ORDER BY qtd DESC LIMIT 5
         """, (hoje,)).fetchall()
 
         vendas_hora = db.execute("""
             SELECT strftime('%H', data) as hora, COUNT(*) as qtd, SUM(valor_total) as total
-            FROM vendas WHERE date(data)=? GROUP BY hora ORDER BY hora
+            FROM vendas WHERE date(data)=? AND status != 'cancelada' GROUP BY hora ORDER BY hora
         """, (hoje,)).fetchall()
 
         vendas_7dias = db.execute("""
             SELECT date(data) as dia, COUNT(*) as qtd, SUM(valor_total) as total
-            FROM vendas WHERE date(data) >= date(?, '-6 days')
+            FROM vendas WHERE date(data) >= date(?, '-6 days') AND status != 'cancelada'
             GROUP BY dia ORDER BY dia
         """, (hoje,)).fetchall()
 

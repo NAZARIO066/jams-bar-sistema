@@ -109,6 +109,7 @@ def register_produtos_routes(app):
                    COALESCE(SUM(iv.quantidade), 0) as total_vendido
             FROM produtos p
             LEFT JOIN itens_venda iv ON iv.produto_id = p.id
+            LEFT JOIN vendas v ON iv.venda_id = v.id AND v.status != 'cancelada'
             WHERE p.ativo=1
             GROUP BY p.id
             ORDER BY total_vendido DESC
