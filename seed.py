@@ -2,10 +2,16 @@ import os
 from werkzeug.security import generate_password_hash
 from database import get_db
 
-ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
-ADMIN_SENHA = os.environ.get("ADMIN_SENHA", "Admin@2026#Jam's")
-FUNC_LOGIN = os.environ.get("FUNC_LOGIN", "funcionario")
-FUNC_SENHA = os.environ.get("FUNC_SENHA", "Func@2026#Sistema")
+ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN")
+ADMIN_SENHA = os.environ.get("ADMIN_SENHA")
+FUNC_LOGIN = os.environ.get("FUNC_LOGIN")
+FUNC_SENHA = os.environ.get("FUNC_SENHA")
+
+if not ADMIN_LOGIN or not ADMIN_SENHA or not FUNC_LOGIN or not FUNC_SENHA:
+    raise RuntimeError(
+        "Variáveis ADMIN_LOGIN, ADMIN_SENHA, FUNC_LOGIN e FUNC_SENHA devem "
+        "estar definidas no arquivo .env"
+    )
 
 CATEGORIAS = [
     "Vinhos", "Whisky", "Vodka", "Gin", "Cervejas", "Refrigerantes",

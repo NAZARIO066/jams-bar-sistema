@@ -10,6 +10,7 @@
   <button onclick="trocarAba('fluxo')" class="btn btn-secondary" id="tab-fluxo">Fluxo de Caixa</button>
   <button onclick="trocarAba('sangrias')" class="btn btn-secondary" id="tab-sangrias">Sangrias</button>
   <button onclick="trocarAba('suprimentos')" class="btn btn-secondary" id="tab-suprimentos">Suprimentos</button>
+  <button onclick="imprimirRelatorio()" class="btn btn-primary ml-auto" id="btn-imprimir">🖨 Imprimir</button>
 </div>
 
 <div class="flex gap-2 mb-4 flex-wrap">
@@ -286,6 +287,18 @@ async function cancelarVenda(vendaId) {
   } catch(e) {
     toast('Erro de conexão', 'error');
   }
+}
+
+function imprimirRelatorio() {
+  const mapTab = {
+    vendas: 'vendas', produto: 'vendas_produto', categoria: 'vendas_categoria',
+    garcom: 'vendas_garcom', fluxo: 'fluxo_caixa', sangrias: 'sangrias', suprimentos: 'suprimentos'
+  };
+  const tipo = mapTab[abaAtual];
+  if (!tipo) return toast('Aba não suporta impressão', 'error');
+  const ini = document.getElementById('ini').value || new Date().toISOString().split('T')[0];
+  const fim = document.getElementById('fim').value || ini;
+  window.open(`/imprimir/relatorio/${tipo}?inicio=${ini}&fim=${fim}`, '_blank');
 }
 
 carregar('hoje');

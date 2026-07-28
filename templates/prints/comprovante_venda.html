@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=72mm, initial-scale=1">
+  <title>Comprovante Venda #{{ venda.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+</head>
+<body>
+  <div class="receipt{% if width == 80 %} wide{% endif %}">
+    {% if empresa.logo %}
+    <div class="header">
+      <img class="logo-img" src="{{ empresa.logo }}" alt="Logo">
+    {% else %}
+    <div class="header">
+    {% endif %}
+      <h1>{{ empresa.nome or "JAM'S BURGUER" }}</h1>
+      {% if empresa.endereco %}<div class="sub">{{ empresa.endereco }}</div>{% endif %}
+      {% if empresa.telefone %}<div class="sub">Tel: {{ empresa.telefone }}</div>{% endif %}
+      {% if empresa.cnpj %}<div class="cnpj">CNPJ: {{ empresa.cnpj }}</div>{% endif %}
+    </div>
+
+    <div class="title">COMPROVANTE DE VENDA</div>
+
+    <div class="info">
+      <div class="row"><span class="label">Venda:</span> <span class="value">#{{ venda.id }}</span></div>
+      <div class="row"><span class="label">Data:</span> <span class="value">{{ venda.data_venda }}</span></div>
+      <div class="row"><span class="label">Funcionário:</span> <span class="value">{{ venda.funcionario }}</span></div>
+      <div class="row">
+        <span class="label">Pagamento:</span>
+        <span class="value">{{ venda.forma_pagamento }}</span>
+      </div>
+      {% if venda.cliente_nome %}
+      <div class="row"><span class="label">Cliente:</span> <span class="value">{{ venda.cliente_nome }}</span></div>
+      {% endif %}
+    </div>
+
+    <hr class="sep">
+
+    <table class="items">
+      <thead>
+        <tr>
+          <th class="col-qty">Qtd</th>
+          <th class="col-desc">Item</th>
+          <th class="col-unit">Unit.</th>
+          <th class="col-val">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in itens %}
+        <tr>
+          <td class="col-qty">{{ item.quantidade }}</td>
+          <td class="col-desc">{{ item.produto_nome }}</td>
+          <td class="col-unit">R$ {{ "%.2f"|format(item.preco_unitario) }}</td>
+          <td class="col-val">R$ {{ "%.2f"|format(item.subtotal) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <hr class="sep">
+
+    <div class="totals">
+      {% if venda.desconto > 0 %}
+      <div class="row"><span>Desconto</span><span>- R$ {{ "%.2f"|format(venda.desconto) }}</span></div>
+      {% endif %}
+      <div class="row total-final">
+        <span>TOTAL</span>
+        <span>R$ {{ "%.2f"|format(venda.total) }}</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="msg">Obrigado pela preferência!</div>
+      <div>{{ empresa.nome or "JAM'S BURGUER" }} — {{ now }}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>

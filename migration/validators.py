@@ -1,5 +1,4 @@
 import os
-import struct
 
 ALLOWED_EXTENSIONS = {
     "sqlite": {"db", "sqlite", "sqlite3"},

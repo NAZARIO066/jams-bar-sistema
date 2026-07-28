@@ -4,10 +4,6 @@ from services.estoque_service import baixar_estoque
 from services.fiado_service import recalcular_saldo_devedor
 
 
-def converter_para_reais(valor):
-    return round(float(valor), 2)
-
-
 def processar_venda_direta(itens, desconto, forma_pagamento, usuario_id, cliente_id=None, dias_vencimento=30, acrescimo=0):
     db = get_db()
     total = 0

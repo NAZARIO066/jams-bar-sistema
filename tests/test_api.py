@@ -17,21 +17,19 @@ def client():
 def _reseed(client):
     _login(client)
     from werkzeug.security import generate_password_hash
-    import sqlite3
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bar_adega.db")
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    func = conn.execute("SELECT id FROM usuarios WHERE login='funcionario'").fetchone()
+    db = get_db()
+    func = db.execute("SELECT id FROM usuarios WHERE login='funcionario'").fetchone()
     if not func:
-        conn.execute(
+        db.execute(
             "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
-            ("Funcionário", "funcionario", generate_password_hash("Func@2026#Sistema"), "funcionario")
+            ("Funcionário", "funcionario", generate_password_hash(os.environ["FUNC_SENHA"]), "funcionario")
         )
-        conn.commit()
-    conn.close()
+        db.commit()
 
 
-def _login(client, login="admin", senha="Admin@2026#Jam's"):
+def _login(client, login="admin", senha=None):
+    if senha is None:
+        senha = os.environ.get("ADMIN_SENHA", "admin")
     r = client.get("/login")
     match = re.search(rb'name="_csrf_token"\s+value="([^"]+)"', r.data)
     if not match:
@@ -237,7 +235,7 @@ class TestCancelamentoVenda:
 
     def _criar_venda(self, client):
         produtos = client.get("/api/produtos").get_json()
-        prod = next((p for p in produtos if p["estoque"] > 0 and p["ativo"] == 1), None)
+        prod = next((p for p in produtos if p["estoque"] > 0 and p["ativo"] == 1 and p.get("codigo_barras")), None)
         assert prod, "Nenhum produto ativo com estoque"
         r = client.post("/api/venda/direta", json={
             "itens": [{"produto_id": prod["id"], "quantidade": 1}],
@@ -275,7 +273,7 @@ class TestCancelamentoVenda:
         assert r.status_code == 404
 
     def test_cancelamento_requer_admin(self, client):
-        _login(client, login="funcionario", senha="Func@2026#Jam's")
+        _login(client, login="funcionario", senha=os.environ["FUNC_SENHA"])
         r = client.post("/api/venda/1/cancelar")
         assert r.status_code in (403, 302)
 
@@ -386,7 +384,7 @@ class TestEmpresaEBackup:
         assert d["ok"] is True
 
     def test_empresa_requer_admin(self, client):
-        _login(client, login="funcionario", senha="Func@2026#Jam's")
+        _login(client, login="funcionario", senha=os.environ["FUNC_SENHA"])
         r = client.post("/api/empresa", json={"razao_social": "X"})
         assert r.status_code in (403, 302)
 
@@ -400,25 +398,22 @@ class TestEmpresaEBackup:
 class TestAutorizacaoPermissoes:
 
     def _ensure_func_user(self):
-        import sqlite3
         from werkzeug.security import generate_password_hash
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bar_adega.db")
-        conn = sqlite3.connect(db_path)
-        func = conn.execute("SELECT id FROM usuarios WHERE login='funcionario'").fetchone()
+        db = get_db()
+        func = db.execute("SELECT id FROM usuarios WHERE login='funcionario'").fetchone()
         if not func:
-            conn.execute(
+            db.execute(
                 "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
-                ("Funcionário", "funcionario", generate_password_hash("Func@2026#Sistema"), "funcionario")
+                ("Funcionário", "funcionario", generate_password_hash(os.environ["FUNC_SENHA"]), "funcionario")
             )
-            conn.commit()
-        conn.close()
+            db.commit()
 
     def _login_funcionario(self, client):
         self._ensure_func_user()
-        return _login(client, login="funcionario", senha="Func@2026#Sistema")
+        return _login(client, login="funcionario", senha=os.environ["FUNC_SENHA"])
 
     def _login_admin(self, client):
-        return _login(client, login="admin", senha="Admin@2026#Jam's")
+        return _login(client, login="admin", senha=os.environ["ADMIN_SENHA"])
 
     def test_funcionario_caixa(self, client):
         self._login_funcionario(client)
@@ -633,7 +628,7 @@ class TestMigracaoValidacao:
         assert "empresa_duplicada" in d
 
     def test_validar_requer_admin(self, client):
-        _login(client, login="funcionario", senha="Func@2026#Sistema")
+        _login(client, login="funcionario", senha=os.environ["FUNC_SENHA"])
         r = client.post("/api/migracao/validar")
         assert r.status_code in (403, 302)
 
@@ -2490,7 +2485,11 @@ class TestAuditoriaManutencao:
 
 
 class TestLimpezaExecucao:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2579,7 +2578,11 @@ class TestLimpezaExecucao:
 
 
 class TestLimpezaSeguranca:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2658,7 +2661,11 @@ class TestLimpezaSeguranca:
 
 
 class TestLimpezaBackup:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2691,7 +2698,11 @@ class TestLimpezaBackup:
 
 
 class TestLimpezaIntegridade:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2728,7 +2739,11 @@ class TestLimpezaIntegridade:
 
 
 class TestLimpezaAuditoria:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2768,7 +2783,11 @@ class TestLimpezaAuditoria:
 
 
 class TestLimpezaRelatorio:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2820,7 +2839,11 @@ class TestLimpezaRelatorio:
 
 
 class TestLimpezaRollback:
+<<<<<<< HEAD
     _SENHA = "Admin@2026#Jam's"
+=======
+    _SENHA = os.environ["ADMIN_SENHA"]
+>>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
 
     def _login_admin(self, client):

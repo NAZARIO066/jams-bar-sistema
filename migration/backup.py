@@ -17,17 +17,3 @@ def criar_backup(db_path):
     return backup_path, None
 
 
-def listar_backups(diretorio):
-    backups = []
-    if not os.path.exists(diretorio):
-        return backups
-    for f in sorted(os.listdir(diretorio), reverse=True):
-        if f.startswith("backup_") or f.startswith("pre_importacao_"):
-            fp = os.path.join(diretorio, f)
-            stat = os.stat(fp)
-            backups.append({
-                "nome": f,
-                "caminho": fp,
-                "tamanho_mb": round(stat.st_size / (1024 * 1024), 2),
-            })
-    return backups

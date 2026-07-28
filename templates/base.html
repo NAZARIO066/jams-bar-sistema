@@ -264,13 +264,13 @@
     document.getElementById('scanner-modal').classList.remove('hidden');
     if (!scanner) scanner = new Html5Qrcode("scanner-video");
     Html5Qrcode.getCameras().then(cams => {
-      if (!cams || !cams.length) { alert('Nenhuma câmera encontrada'); return; }
+      if (!cams || !cams.length) { toast('Nenhuma câmera encontrada', 'error'); return; }
       const camId = cams.find(c => /back|traseira|environment/i.test(c.label))?.id || cams[0].id;
       scanner.start(camId, { fps: 10, qrbox: { width: 320, height: 160 } },
         (decoded) => { window.fecharScanner(); if (typeof callbackFn === 'function') callbackFn(decoded); },
         () => {}
-      ).catch(e => alert('Erro ao abrir câmera: ' + e));
-    }).catch(e => alert('Erro: ' + e));
+      ).catch(e => toast('Erro ao abrir câmera: ' + e, 'error'));
+    }).catch(e => toast('Erro ao detectar câmeras: ' + e, 'error'));
   };
   window.fecharScanner = function() {
     document.getElementById('scanner-modal').classList.add('hidden');

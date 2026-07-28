@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=190mm, initial-scale=1">
+  <title>{{ titulo }} — {{ empresa.nome }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/print-a4.css') }}">
+</head>
+<body>
+  <div class="a4-page">
+
+    <div class="a4-header">
+      {% if empresa.logo %}
+      <img class="logo" src="{{ empresa.logo }}" alt="Logo">
+      {% endif %}
+      <div class="empresa-info">
+        <h1>{{ empresa.nome }}</h1>
+        {% if empresa.endereco %}<div class="sub">{{ empresa.endereco }}</div>{% endif %}
+        {% if empresa.telefone %}<div class="sub">Tel: {{ empresa.telefone }}{% if empresa.cnpj %} — CNPJ: {{ empresa.cnpj }}{% endif %}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="a4-title">{{ titulo }}</div>
+    <div class="a4-periodo">Período: {{ periodo }} | Emitido em: {{ now }}</div>
+
+    {% if summary %}
+    <div class="a4-summary">
+      {% for item in summary %}
+      <div class="card">
+        <div class="label">{{ item.label }}</div>
+        <div class="value {{ item.color|default('') }}">{{ item.value }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for section in sections %}
+    {% if section.title %}
+    <div class="a4-section-title">{{ section.title }}</div>
+    {% endif %}
+    <table class="a4-table">
+      <thead>
+        <tr>
+          {% for col in section.headers %}
+          <th class="{{ col.css|default('') }}">{{ col.label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if section.rows %}
+        {% for row in section.rows %}
+        <tr>
+          {% for col in section.headers %}
+          <td class="{{ col.css|default('') }}">{{ row[col.key]|default('—') }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="{{ section.headers|length }}" style="text-align:center;color:#999;padding:12px">Sem dados para este período</td>
+        </tr>
+        {% endif %}
+      </tbody>
+      {% if section.footer %}
+      <tfoot>
+        <tr>
+          {% for col in section.headers %}
+          <td class="{{ col.css|default('') }}">{{ section.footer[col.key]|default('') }}</td>
+          {% endfor %}
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+    {% endfor %}
+
+    <div class="a4-footer">
+      <span>{{ empresa.nome }} — Relatório gerado automaticamente</span>
+      <span>{{ now }}</span>
+    </div>
+
+  </div>
+
+  <script>window.onload = function() { window.print(); };</script>
+</body>
+</html>

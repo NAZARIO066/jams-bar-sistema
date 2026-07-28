@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=72mm, initial-scale=1">
+  <title>Comprovante Parcial Comanda #{{ comanda.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/print.css') }}">
+</head>
+<body>
+  <div class="receipt{% if width == 80 %} wide{% endif %}">
+    {% if empresa.logo %}
+    <div class="header">
+      <img class="logo-img" src="{{ empresa.logo }}" alt="Logo">
+    {% else %}
+    <div class="header">
+    {% endif %}
+      <h1>{{ empresa.nome or "JAM'S BURGUER" }}</h1>
+      {% if empresa.endereco %}<div class="sub">{{ empresa.endereco }}</div>{% endif %}
+      {% if empresa.telefone %}<div class="sub">Tel: {{ empresa.telefone }}</div>{% endif %}
+      {% if empresa.cnpj %}<div class="cnpj">CNPJ: {{ empresa.cnpj }}</div>{% endif %}
+    </div>
+
+    <div class="title">PAGAMENTO PARCIAL</div>
+
+    <div class="info">
+      <div class="row"><span class="label">Comanda:</span> <span class="value">#{{ comanda.id }}</span></div>
+      <div class="row"><span class="label">Mesa:</span> <span class="value">{{ comanda.mesa_numero }}</span></div>
+      <div class="row"><span class="label">Data:</span> <span class="value">{{ now }}</span></div>
+      {% if pagante %}
+      <div class="row"><span class="label">Pago por:</span> <span class="value">{{ pagante }}</span></div>
+      {% endif %}
+      <div class="row">
+        <span class="label">Forma:</span>
+        <span class="value">{{ pagamento.forma_pagamento }}</span>
+      </div>
+    </div>
+
+    <hr class="sep">
+
+    <div style="font-size:9pt; font-weight:bold; margin-bottom:1mm;">Itens Pagos:</div>
+    {% for item in itens_pagos %}
+    <div class="payment-row">
+      <span>{{ item.quantidade }}x {{ item.produto_nome }}</span>
+      <span>R$ {{ "%.2f"|format(item.subtotal) }}</span>
+    </div>
+    {% endfor %}
+
+    <hr class="sep">
+
+    <div class="totals">
+      <div class="row"><span>Subtotal dos itens</span><span>R$ {{ "%.2f"|format(pagamento.valor_total) }}</span></div>
+      {% if pagamento.desconto > 0 %}
+      <div class="row"><span>Desconto</span><span>- R$ {{ "%.2f"|format(pagamento.desconto) }}</span></div>
+      {% endif %}
+      <div class="row total-final">
+        <span>PAGO</span>
+        <span>R$ {{ "%.2f"|format(pagamento.valor_total - pagamento.desconto) }}</span>
+      </div>
+    </div>
+
+    <div class="remaining">
+      RESTANTE: R$ {{ "%.2f"|format(saldo_restante) }}
+    </div>
+
+    <div class="footer">
+      <div class="msg">{{ empresa.nome or "JAM'S BURGUER" }}</div>
+      <div>{{ now }}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>

@@ -28,6 +28,9 @@ async function load() {
     const totalSup = movs.filter(m=>m.tipo==='suprimento').reduce((s,m)=>s+m.valor,0);
     const totalSang = movs.filter(m=>m.tipo==='sangria').reduce((s,m)=>s+m.valor,0);
     area.innerHTML = `
+      <div class="flex gap-2 mb-4 justify-end">
+        <button onclick="window.open('/imprimir/relatorio/caixa','_blank')" class="btn btn-primary">🖨 Imprimir</button>
+      </div>
       <div class="grid md:grid-cols-2 gap-4 mb-4">
         <div class="card">
           <h3 class="font-semibold mb-3">Caixa Aberto</h3>
@@ -109,7 +112,7 @@ async function fechar() {
     let msg = `Caixa fechado! Total: ${fmtMoeda(d.total)} em ${d.qtd} vendas`;
     if (d.diferenca !== 0) msg += ` | Diferença: ${fmtMoeda(d.diferenca)}`;
     toast(msg);
-    if (d.diferenca !== 0) alert(`⚠ ATENÇÃO: Diferença de ${fmtMoeda(d.diferenca)} no caixa!\nValor esperado: ${fmtMoeda(d.esperado)}\nValor informado: ${fmtMoeda(d.valor_final)}`);
+    if (d.diferenca !== 0) toast(`⚠ DIFERENÇA: Esperado ${fmtMoeda(d.esperado)} | Informado ${fmtMoeda(d.valor_final)} | Diferença ${fmtMoeda(d.diferenca)}`, 'error');
     load();
   } else toast(d.erro || 'Erro', 'error');
 }

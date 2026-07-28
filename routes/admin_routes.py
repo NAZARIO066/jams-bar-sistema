@@ -28,10 +28,13 @@ def register_admin_routes(app):
     def api_usuario_create():
         db = get_db()
         d = request.json or {}
+        senha = d.get("senha")
+        if not senha:
+            return jsonify({"ok": False, "erro": "Senha é obrigatória"}), 400
         try:
             db.execute(
                 "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
-                (d.get("nome"), d.get("login"), generate_password_hash(d.get("senha", "123456")), d.get("nivel", "funcionario"))
+                (d.get("nome"), d.get("login"), generate_password_hash(senha), d.get("nivel", "funcionario"))
             )
             db.commit()
         except Exception:

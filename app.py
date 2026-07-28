@@ -21,6 +21,7 @@ from routes.relatorios_routes import register_relatorios_routes
 from routes.migration_routes import register_migration_routes
 from migration.routes import register_wizard_routes
 from maintenance.routes import register_maintenance_routes
+from routes.pagamento_routes import register_pagamento_routes
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -39,6 +40,18 @@ register_relatorios_routes(app)
 register_migration_routes(app)
 register_wizard_routes(app)
 register_maintenance_routes(app)
+register_pagamento_routes(app)
+
+
+# =================== HEADERS DE SEGURANÇA ===================
+
+@app.after_request
+def set_security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
 
 
 # =================== INICIALIZAÇÃO ===================
@@ -147,6 +160,46 @@ def ensure_db():
                     db.commit()
         except Exception as e:
             logging.warning("Migração empresa singleton: %s", e)
+        try:
+            db.execute("""CREATE TABLE IF NOT EXISTS pagamentos_parciais (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comanda_id INTEGER NOT NULL REFERENCES comandas(id),
+                usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+                valor_total REAL NOT NULL,
+                desconto REAL NOT NULL DEFAULT 0,
+                forma_pagamento TEXT NOT NULL,
+                nome_pessoa TEXT,
+                cliente_id INTEGER REFERENCES clientes(id),
+                data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+            db.commit()
+        except Exception as e:
+            logging.warning("Migração pagamentos_parciais: %s", e)
+        try:
+            db.execute("""CREATE TABLE IF NOT EXISTS pagamentos_parciais_itens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pagamento_parcial_id INTEGER NOT NULL REFERENCES pagamentos_parciais(id) ON DELETE CASCADE,
+                item_comanda_id INTEGER NOT NULL REFERENCES itens_comanda(id),
+                quantidade_paga REAL NOT NULL,
+                valor_unitario REAL NOT NULL,
+                subtotal REAL NOT NULL
+            )""")
+            db.commit()
+        except Exception as e:
+            logging.warning("Migração pagamentos_parciais_itens: %s", e)
+        try:
+            db.execute("""CREATE TABLE IF NOT EXISTS config_acesso_rapido (
+                id INTEGER PRIMARY KEY,
+                modo TEXT NOT NULL DEFAULT 'automatico' CHECK(modo IN ('manual','automatico','misto'))
+            )""")
+            db.execute("""CREATE TABLE IF NOT EXISTS acesso_rapido_produtos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+                ordem INTEGER NOT NULL DEFAULT 0
+            )""")
+            db.commit()
+        except Exception as e:
+            logging.warning("Migração config_acesso_rapido: %s", e)
     _db_ready = True
 
 

@@ -52,5 +52,3 @@ def admin_required(view):
         return view(*args, **kwargs)
     return wrapped
 
-def now_str():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")

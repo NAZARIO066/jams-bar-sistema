@@ -192,25 +192,6 @@ def limpar_empresa_duplicatas(db=None):
     return count
 
 
-def validar_ids_colisao(tabela, dados_importacao, db=None):
-    own_db = db is None
-    if own_db:
-        db = get_db()
-    colisoes = []
-    try:
-        ids_existentes = {
-            row["id"] for row in db.execute(f"SELECT id FROM {tabela}").fetchall()
-        }
-        for registro in dados_importacao:
-            if "id" in registro and registro["id"] in ids_existentes:
-                colisoes.append({"tabela": tabela, "id": registro["id"]})
-    except Exception:
-        pass
-    if own_db:
-        db.close()
-    return colisoes
-
-
 def executar_antes_importacao(db=None):
     own_db = db is None
     if own_db:

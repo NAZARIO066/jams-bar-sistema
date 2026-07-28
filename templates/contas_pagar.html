@@ -15,8 +15,9 @@
   <button onclick="carregar('atrasado')" class="btn btn-secondary" id="btn-atras">Atrasadas</button>
   <button onclick="carregar('pago')" class="btn btn-secondary" id="btn-pago">Pagas</button>
   <button onclick="verificarAtrasadas()" class="btn btn-danger ml-auto">🔄 Verificar Atrasadas</button>
+  <button onclick="window.open('/imprimir/relatorio/contas_pagar','_blank')" class="btn btn-primary">🖨 Imprimir</button>
   {% if session.get('usuario_nivel') == 'admin' %}
-  <button onclick="abrir()" class="btn btn-primary">+ Nova Conta</button>
+  <button onclick="abrir()" class="btn btn-secondary">+ Nova Conta</button>
   {% endif %}
 </div>
 

@@ -5,11 +5,12 @@
 <div class="flex justify-between items-center mb-4">
   <input id="busca" placeholder="🔍 Buscar..." class="px-3 py-2 rounded w-64" oninput="listar()">
   <div class="flex gap-2">
+    <button onclick="window.open('/imprimir/relatorio/produtos_cadastro','_blank')" class="btn btn-primary">🖨 Imprimir</button>
     {% if session.get('usuario_nivel') == 'admin' %}
     <button onclick="abrirCategoria()" class="btn btn-secondary">+ Categoria</button>
     {% endif %}
     {% if session.get('usuario_nivel') == 'admin' %}
-    <button onclick="abrirProduto()" class="btn btn-primary">+ Produto</button>
+    <button onclick="abrirProduto()" class="btn btn-secondary">+ Produto</button>
     {% endif %}
   </div>
 </div>
@@ -45,6 +46,19 @@
         <div><label class="text-sm">Estoque Mín.</label><input id="emin" type="number" step="0.01" class="w-full px-3 py-2 rounded"></div>
       </div>
       <button class="btn btn-primary w-full">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<div id="modal-cat" class="hidden modal-bg" onclick="if(event.target===this)fecharModalCat()">
+  <div class="modal-box" style="max-width:24rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 class="font-bold text-lg">Nova Categoria</h3>
+      <button onclick="fecharModalCat()" class="text-slate-400">✕</button>
+    </div>
+    <form class="p-4 space-y-3" onsubmit="salvarCategoria(event)">
+      <div><label class="text-sm">Nome da Categoria *</label><input id="cat-nome" required class="w-full px-3 py-2 rounded" placeholder="Ex: Bebidas"></div>
+      <button class="btn btn-primary w-full">Criar Categoria</button>
     </form>
   </div>
 </div>
@@ -135,12 +149,22 @@ async function excluir(id) {
 }
 
 async function abrirCategoria() {
-  const nome = prompt('Nome da categoria:');
+  document.getElementById('cat-nome').value = '';
+  document.getElementById('modal-cat').classList.remove('hidden');
+  setTimeout(() => document.getElementById('cat-nome').focus(), 100);
+}
+
+async function salvarCategoria(e) {
+  e.preventDefault();
+  const nome = document.getElementById('cat-nome').value.trim();
   if (!nome) return;
   const r = await fetch('/api/categorias', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nome})});
   const d = await r.json();
-  if (d.ok) toast('Categoria criada');
+  if (d.ok) { toast('Categoria criada'); fecharModalCat(); }
+  else toast(d.erro || 'Erro', 'error');
 }
+
+function fecharModalCat() { document.getElementById('modal-cat').classList.add('hidden'); }
 
 function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
 listar();

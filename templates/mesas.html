@@ -4,21 +4,18 @@
 {% block content %}
 <div class="flex items-center justify-between mb-4">
   <div class="flex gap-2 text-sm flex-wrap">
-    <span class="badge badge-green">● Disponíveis</span>
-    <span class="badge" style="background:#ea580c33;color:#fb923c">● Ocupadas</span>
-    <span class="badge" style="background:#9333ea33;color:#c084fc">● Reservadas</span>
-    <span class="badge badge-gray">● Fechando</span>
+    <button onclick="filtroMesas='todas';loadMesas()" id="flt-todas" class="badge badge-gold cursor-pointer">Todas</button>
+    <button onclick="filtroMesas='ocupada';loadMesas()" id="flt-ocupadas" class="badge badge-yellow cursor-pointer" style="background:#ea580c33;color:#fb923c">● Em Uso</button>
+    <button onclick="filtroMesas='disponivel';loadMesas()" id="flt-disp" class="badge badge-green cursor-pointer">● Disponíveis</button>
   </div>
   <div class="flex gap-2">
-    <select id="filtro-garcom" onchange="loadMesas()" class="px-3 py-2 rounded text-sm">
-      <option value="">Todos os garçons</option>
-    </select>
-    <button onclick="loadMesas()" class="btn btn-secondary">🔄 Atualizar</button>
+    <button onclick="abrirModalNovaMesa()" class="btn btn-primary text-sm">➕ Abrir Mesa</button>
+    <button onclick="loadMesas()" class="btn btn-secondary">🔄</button>
   </div>
 </div>
 <div id="grid-mesas" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-3"></div>
 
-<div id="modal" class="hidden modal-bg">
+<div id="modal" class="hidden modal-bg" onclick="if(event.target===this)fecharModal()">
   <div class="modal-box max-w-lg">
     <div class="p-4 border-b border-ink-700 flex items-center justify-between">
       <h3 id="modal-titulo" class="font-bold text-lg">Mesa</h3>
@@ -27,30 +24,135 @@
     <div id="modal-corpo" class="p-4"></div>
   </div>
 </div>
+
+<div id="modal-nova-mesa" class="hidden modal-bg" onclick="if(event.target===this)fecharModalNovaMesa()">
+  <div class="modal-box" style="max-width:28rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 class="font-bold text-lg">➕ Abrir Nova Mesa</h3>
+      <button onclick="fecharModalNovaMesa()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <div id="mesas-disponiveis-lista" class="space-y-2 max-h-60 overflow-auto"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-obs" class="hidden modal-bg" onclick="if(event.target===this)fecharModalObs()">
+  <div class="modal-box" style="max-width:24rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 class="font-bold text-lg">📋 Observação do Item</h3>
+      <button onclick="fecharModalObs()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <p id="obs-produto-nome" class="text-sm text-slate-300"></p>
+      <input id="obs-input" placeholder="Ex: Sem cebola..." class="w-full px-3 py-2 rounded text-sm">
+      <div class="flex gap-2 justify-end">
+        <button onclick="fecharModalObs()" class="btn btn-secondary text-sm">Cancelar</button>
+        <button onclick="confirmarObs()" class="btn btn-primary text-sm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-quantidade" class="hidden modal-bg" onclick="if(event.target===this)fecharModalQtd()">
+  <div class="modal-box" style="max-width:20rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 class="font-bold text-lg">Quantidade</h3>
+      <button onclick="fecharModalQtd()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <p id="qtd-produto-nome" class="text-sm text-slate-300"></p>
+      <input id="qtd-input" type="number" min="0.5" step="0.5" value="1" class="w-full px-3 py-2 rounded text-lg text-center">
+      <div class="flex gap-2 justify-end">
+        <button onclick="fecharModalQtd()" class="btn btn-secondary text-sm">Cancelar</button>
+        <button onclick="confirmarQtd()" class="btn btn-primary text-sm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-impressao-mesa" class="hidden modal-bg" onclick="if(event.target===this)fecharModalImpressaoMesa()">
+  <div class="modal-box" style="max-width:22rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 class="font-bold text-lg" id="impressao-mesa-titulo">🖨️ Imprimir Comprovante?</h3>
+      <button onclick="fecharModalImpressaoMesa()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div class="p-4 space-y-3 text-center">
+      <p class="text-slate-300">Deseja imprimir o comprovante?</p>
+      <div class="flex gap-3">
+        <button onclick="imprimirSimMesa()" class="btn btn-success flex-1">✅ Sim, Imprimir</button>
+        <button onclick="imprimirNaoMesa()" class="btn btn-secondary flex-1">✕ Não, Obrigado</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-pagamento-mesa" class="hidden modal-bg" onclick="if(event.target===this)fecharModalPagamentoMesa()">
+  <div class="modal-box" style="max-width:30rem">
+    <div class="p-4 border-b border-ink-700 flex items-center justify-between">
+      <h3 class="font-bold text-lg">💰 Pagamento da Mesa</h3>
+      <button onclick="fecharModalPagamentoMesa()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div class="p-4 space-y-3" id="pagamento-mesa-corpo"></div>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
+<style>
+  .pag-btn { padding: .5rem; border-radius: .5rem; font-size: .8rem; font-weight: 600; background: var(--panel); border: 2px solid var(--border); color: var(--text); cursor: pointer; transition: all .2s; }
+  .pag-btn:hover { border-color: var(--gold); }
+  .pag-btn.active { border-color: var(--gold); background: rgba(212,175,55,0.15); color: var(--gold); }
+  .ac-item { padding: .5rem; border-radius: .5rem; display: flex; align-items: center; justify-content: space-between; background: var(--panel-2); cursor: pointer; transition: background .15s; }
+  .ac-item:hover { background: rgba(212,175,55,0.08); }
+</style>
 <script>
 let mesaAtual = null;
 let comandaAtual = null;
-let garcons = [];
-const cores = { disponivel:'mesa-disponivel', ocupada:'mesa-ocupada', reservada:'mesa-reservada', fechando:'mesa-fechando' };
-const labels = { disponivel:'Disponível', ocupada:'Ocupada', reservada:'Reservada', fechando:'Fechando' };
+let filtroMesas = 'todas';
+let buscaTimer = null;
+let obsCallback = null;
+let obsProdutoNome = '';
+let qtdCallback = null;
+let qtdProdutoNome = '';
+let _acessoRapidoCacheM = null;
 
-async function loadGarcons() {
-  const r = await fetch('/api/garcons');
-  garcons = (await r.json()).filter(g => g.ativo);
-  const sel = document.getElementById('filtro-garcom');
-  const atual = sel.value;
-  sel.innerHTML = '<option value="">Todos os garçons</option>' + garcons.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
-  sel.value = atual;
+function normalizeText(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
+
+function abrirModalObs() {
+  document.getElementById('obs-produto-nome').textContent = obsProdutoNome;
+  document.getElementById('obs-input').value = '';
+  document.getElementById('modal-obs').classList.remove('hidden');
+  document.getElementById('obs-input').focus();
 }
+function fecharModalObs() { document.getElementById('modal-obs').classList.add('hidden'); obsCallback = null; }
+function confirmarObs() { document.getElementById('modal-obs').classList.add('hidden'); if (obsCallback) { obsCallback(); obsCallback = null; } }
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && !document.getElementById('modal-obs').classList.contains('hidden')) confirmarObs(); });
+
+function abrirModalQtd(produtoNome, cb) {
+  qtdProdutoNome = produtoNome; qtdCallback = cb;
+  document.getElementById('qtd-produto-nome').textContent = produtoNome;
+  document.getElementById('qtd-input').value = 1;
+  document.getElementById('modal-quantidade').classList.remove('hidden');
+  document.getElementById('qtd-input').focus();
+}
+function fecharModalQtd() { document.getElementById('modal-quantidade').classList.add('hidden'); qtdCallback = null; }
+function confirmarQtd() {
+  const qtd = parseFloat(document.getElementById('qtd-input').value) || 1;
+  document.getElementById('modal-quantidade').classList.add('hidden');
+  if (qtdCallback) { qtdCallback(qtd); qtdCallback = null; }
+}
+document.getElementById('qtd-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarQtd(); });
 
 async function loadMesas() {
   const r = await fetch('/api/mesas');
   let mesas = await r.json();
-  const filtro = document.getElementById('filtro-garcom').value;
-  if (filtro) mesas = mesas.filter(m => String(m.garcom_id) === filtro);
+  if (filtroMesas !== 'todas') mesas = mesas.filter(m => m.status === filtroMesas);
+  document.querySelectorAll('[id^="flt-"]').forEach(b => b.style.opacity = '1');
+  const activeBtn = document.getElementById('flt-' + (filtroMesas === 'todas' ? 'todas' : filtroMesas === 'ocupada' ? 'ocupadas' : 'disp'));
+  if (activeBtn) activeBtn.style.opacity = '1';
   const g = document.getElementById('grid-mesas');
+  const cores = { disponivel:'mesa-disponivel', ocupada:'mesa-ocupada', reservada:'mesa-reservada', fechando:'mesa-fechando' };
+  const labels = { disponivel:'Disponível', ocupada:'Ocupada', reservada:'Reservada', fechando:'Fechando' };
   g.innerHTML = mesas.map(m => `
     <div class="mesa-card ${cores[m.status]||'mesa-disponivel'}" onclick="abrirMesa(${m.id})">
       <div class="flex items-center justify-between">
@@ -59,10 +161,34 @@ async function loadMesas() {
       </div>
       <div class="mt-1 text-xs text-slate-400">⏱ ${m.tempo||'--'}</div>
       <div class="font-bold text-brand-500">${fmtMoeda(m.valor_atual)}</div>
-      ${m.garcom_nome ? `<div class="text-xs text-orange-300 truncate mt-1">🧑‍🍳 ${m.garcom_nome}</div>` : ''}
       ${m.reservada_para ? `<div class="text-xs ${m.status==='ocupada'?'text-orange-300':'text-purple-300'} truncate">${m.status==='ocupada'?'👤':'📅'} ${m.reservada_para}</div>` : ''}
     </div>
   `).join('') || '<div class="col-span-full text-center text-slate-400 py-8">Nenhuma mesa encontrada</div>';
+}
+
+async function abrirModalNovaMesa() {
+  const r = await fetch('/api/mesas/disponiveis');
+  const mesas = await r.json();
+  const cont = document.getElementById('mesas-disponiveis-lista');
+  if (!mesas.length) { cont.innerHTML = '<div class="text-slate-400 text-center py-4">Nenhuma mesa disponível</div>'; }
+  else {
+    cont.innerHTML = mesas.map(m => `
+      <div class="ac-item" onclick="selecionarMesaAbrir(${m.id}, ${m.numero})">
+        <div>
+          <div class="font-medium">Mesa ${String(m.numero).padStart(2,'0')}</div>
+          <div class="text-xs text-slate-400">Capacidade: ${m.capacidade} lugares</div>
+        </div>
+        <button class="btn btn-primary text-xs">▶ Abrir</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('modal-nova-mesa').classList.remove('hidden');
+}
+function fecharModalNovaMesa() { document.getElementById('modal-nova-mesa').classList.add('hidden'); }
+
+async function selecionarMesaAbrir(mesaId, numero) {
+  fecharModalNovaMesa();
+  abrirMesa(mesaId);
 }
 
 async function abrirMesa(id) {
@@ -72,7 +198,7 @@ async function abrirMesa(id) {
   if (!mesa) return;
   mesaAtual = mesa;
   comandaAtual = mesa.comanda_id;
-
+  const labels = { disponivel:'Disponível', ocupada:'Ocupada', reservada:'Reservada', fechando:'Fechando' };
   document.getElementById('modal-titulo').textContent = `Mesa ${String(mesa.numero).padStart(2,'0')} — ${labels[mesa.status]}`;
   const corpo = document.getElementById('modal-corpo');
   let html = '';
@@ -80,77 +206,72 @@ async function abrirMesa(id) {
   if (mesa.status === 'disponivel') {
     html = `
       <div class="space-y-3">
-        <p class="text-slate-300 text-sm">Mesa livre. Informe cliente e garçom.</p>
+        <p class="text-slate-300 text-sm">Mesa livre.</p>
         <div><label class="text-sm">Cliente (opcional)</label><input id="cli-nome" placeholder="Nome do cliente" class="w-full px-3 py-2 rounded"></div>
-        <div>
-          <label class="text-sm">Garçom *</label>
-          <select id="garcom-sel" class="w-full px-3 py-2 rounded" required>
-            <option value="">Selecione...</option>
-            ${garcons.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('')}
-          </select>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="abrirComanda(${mesa.id})" class="btn btn-primary">▶ Abrir Comanda</button>
-          <button onclick="reservar(${mesa.id})" class="btn btn-secondary">📅 Reservar</button>
-        </div>
+        <button onclick="abrirComanda(${mesa.id})" class="btn btn-primary w-full">▶ Abrir Comanda</button>
       </div>`;
   } else if (mesa.status === 'reservada') {
     html = `
       <div class="space-y-3">
         <p>Reservada para: <b>${mesa.reservada_para||'—'}</b></p>
-        <div>
-          <label class="text-sm">Garçom *</label>
-          <select id="garcom-sel" class="w-full px-3 py-2 rounded" required>
-            <option value="">Selecione...</option>
-            ${garcons.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('')}
-          </select>
-        </div>
-        <div class="flex gap-2">
-          <button onclick="abrirComanda(${mesa.id})" class="btn btn-primary">▶ Abrir Comanda</button>
-          <button onclick="liberar(${mesa.id})" class="btn btn-secondary">Liberar</button>
-        </div>
+        <button onclick="abrirComanda(${mesa.id})" class="btn btn-primary w-full">▶ Abrir Comanda</button>
+        <button onclick="liberar(${mesa.id})" class="btn btn-secondary w-full">Liberar</button>
       </div>`;
   } else if (mesa.status === 'ocupada' || mesa.status === 'fechando') {
     const cr = await fetch('/api/comanda/' + comandaAtual);
     const cd = await cr.json();
+    const pr = await fetch('/api/comanda/' + comandaAtual + '/pagamentos');
+    const pg = await pr.json();
     html = `
       <div class="space-y-3">
         <div class="flex items-center justify-between text-xs text-slate-400">
           <span>Comanda #${cd.comanda.id} • Aberta em ${fmtData(cd.comanda.abertura)}</span>
-          <span>🧑‍🍳 ${cd.comanda.garcom_nome||'Sem garçom'}</span>
+          ${cd.comanda.garcom_nome ? `<span>🧑‍🍳 ${cd.comanda.garcom_nome}</span>` : ''}
         </div>
+        ${pg.restante < pg.total_comanda ? `<div class="text-xs p-2 rounded bg-green-900/30 border border-green-700 text-green-300">💰 Pago: ${fmtMoeda(pg.total_pago)} • Restante: ${fmtMoeda(pg.restante)}</div>` : ''}
         ${cd.comanda.observacao ? `<div class="text-xs text-slate-400 bg-ink-800 p-2 rounded">📋 ${cd.comanda.observacao}</div>` : ''}
         <div class="card" style="padding:.5rem">
           <table class="table text-sm">
             <thead><tr><th>Produto</th><th>Qtd</th><th>Unit</th><th>Subtotal</th><th></th></tr></thead>
             <tbody>
-              ${cd.itens.map(i => `<tr>
-                <td>${i.produto_nome}${i.observacao ? `<div class="text-xs text-slate-400 italic">📋 ${i.observacao}</div>` : ''}</td>
-                <td>${i.quantidade}</td>
-                <td>${fmtMoeda(i.preco_unitario)}</td>
-                <td>${fmtMoeda(i.subtotal)}</td>
-                <td><button onclick="removerItem(${i.id})" class="text-red-400 hover:text-red-300 text-xs">🗑</button></td>
-              </tr>`).join('') || '<tr><td colspan="5" class="text-slate-400">Nenhum item</td></tr>'}
+              ${cd.itens.map(i => {
+                const itemPago = pg.pagamentos.reduce((acc, p) => {
+                  const pi = p.itens.find(x => x.item_comanda_id === i.id);
+                  return acc + (pi ? pi.quantidade_paga : 0);
+                }, 0);
+                const pendente = i.quantidade - itemPago;
+                return `<tr class="${pendente <= 0 ? 'opacity-50' : ''}">
+                  <td>${i.produto_nome}${i.observacao ? `<div class="text-xs text-slate-400 italic">📋 ${i.observacao}</div>` : ''}</td>
+                  <td>${itemPago > 0 ? `<span class="text-green-400">${itemPago}✓</span> ` : ''}${pendente > 0 ? pendente : ''}</td>
+                  <td>${fmtMoeda(i.preco_unitario)}</td>
+                  <td>${fmtMoeda(i.subtotal)}</td>
+                  <td>${pendente > 0 ? `<button onclick="removerItem(${i.id})" class="text-red-400 hover:text-red-300 text-xs">🗑</button>` : ''}</td>
+                </tr>`;
+              }).join('') || '<tr><td colspan="5" class="text-slate-400">Nenhum item</td></tr>'}
             </tbody>
             <tfoot><tr><td colspan="3" class="font-bold">TOTAL</td><td colspan="2" class="font-bold text-brand-500 text-lg">${fmtMoeda(cd.total)}</td></tr></tfoot>
           </table>
         </div>
         <div class="border-t border-ink-700 pt-3">
           <h4 class="font-semibold mb-2 text-sm">Adicionar produto</h4>
-          <div class="flex gap-2 mb-2">
-            <input id="busca-prod" placeholder="🔍 Buscar produto ou código de barras..." class="flex-1 px-3 py-2 rounded text-sm" onkeydown="if(event.key==='Enter')buscarProd()">
-            <button onclick="buscarProd()" class="btn btn-primary text-xs">Buscar</button>
+          <div class="relative mb-2">
+            <input id="busca-prod" placeholder="🔍 Digite nome ou código de barras..." class="w-full px-3 py-2 rounded text-sm" autocomplete="off" oninput="onBuscaProdInput(this.value)">
+            <div id="autocomplete-prod" class="hidden absolute z-30 w-full mt-1 rounded-lg border border-ink-700 bg-ink-800 max-h-48 overflow-auto shadow-xl"></div>
           </div>
-          <div id="result-busca" class="space-y-1 max-h-40 overflow-auto"></div>
+        </div>
+        <div id="ar-mesa-section" class="border-t border-ink-700 pt-3">
+          <h4 class="text-sm font-semibold text-slate-400 mb-2">⚡ Acesso Rápido</h4>
+          <div id="ar-mesa-lista" class="space-y-1 max-h-32 overflow-auto"></div>
         </div>
         <div class="border-t border-ink-700 pt-3 flex flex-wrap gap-2 justify-end">
+          <button onclick="imprimirComanda(${comandaAtual})" class="btn btn-secondary text-xs">🖨 Imprimir Comanda</button>
           <button onclick="reabrirComanda(${comandaAtual})" class="btn btn-secondary text-xs">🔄 Reabrir</button>
           <button onclick="transferirMesa(${mesa.id})" class="btn btn-secondary text-xs">↗ Transferir</button>
-          <button onclick="trocarGarcom(${mesa.id})" class="btn btn-secondary text-xs">🧑‍🔄 Garçom</button>
           <button onclick="cancelarComanda(${comandaAtual})" class="btn btn-danger text-xs">✖ Cancelar</button>
-          <button onclick="fecharMesa(${mesa.id})" class="btn btn-success">💰 Fechar Conta (${fmtMoeda(cd.total)})</button>
+          <button onclick="abrirPagamentoMesa(${mesa.id}, ${cd.total})" class="btn btn-success">💰 Fechar Conta (${fmtMoeda(cd.total)})</button>
         </div>
       </div>`;
+    setTimeout(() => carregarAcessoRapidoMesa(), 100);
   }
   corpo.innerHTML = html;
   document.getElementById('modal').classList.remove('hidden');
@@ -158,22 +279,40 @@ async function abrirMesa(id) {
 
 function fecharModal() { document.getElementById('modal').classList.add('hidden'); mesaAtual = null; comandaAtual = null; }
 
+function imprimirComanda(comandaId) {
+  window.open('/imprimir/comanda/' + comandaId, '_blank');
+}
+function imprimirMesa(comandaId) {
+  window.open('/imprimir/mesa/' + comandaId, '_blank');
+}
+function imprimirParcial(pagamentoId) {
+  window.open('/imprimir/parcial/' + pagamentoId, '_blank');
+}
+function mostrarModalImpressao(url, titulo) {
+  const m = document.getElementById('modal-impressao-mesa');
+  m.classList.remove('hidden');
+  window._impressaoUrlM = url;
+  document.getElementById('impressao-mesa-titulo').textContent = titulo || '🖨️ Imprimir Comprovante?';
+}
+function fecharModalImpressaoMesa() {
+  document.getElementById('modal-impressao-mesa').classList.add('hidden');
+  window._impressaoUrlM = null;
+}
+function imprimirSimMesa() {
+  if (window._impressaoUrlM) window.open(window._impressaoUrlM, '_blank');
+  fecharModalImpressaoMesa();
+}
+function imprimirNaoMesa() { fecharModalImpressaoMesa(); }
+
 async function abrirComanda(id) {
   const nome = (document.getElementById('cli-nome')?.value || '').trim();
-  const garcomId = document.getElementById('garcom-sel')?.value;
-  if (!garcomId) { toast('Selecione um garçom!', 'error'); return; }
-  const r = await fetch(`/api/mesas/${id}/abrir`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cliente_nome: nome, garcom_id: parseInt(garcomId)}) });
+  const r = await fetch(`/api/mesas/${id}/abrir`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({cliente_nome: nome, garcom_id: null})
+  });
   const d = await r.json();
   if (d.ok) { toast(nome ? `Mesa aberta para ${nome}!` : 'Comanda aberta!'); fecharModal(); loadMesas(); }
   else toast(d.erro || 'Erro', 'error');
-}
-
-async function reservar(id) {
-  const nome = prompt('Nome da reserva:');
-  if (!nome) return;
-  const r = await fetch(`/api/mesas/${id}/reservar`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nome}) });
-  const d = await r.json();
-  if (d.ok) { toast('Mesa reservada'); fecharModal(); loadMesas(); }
 }
 
 async function liberar(id) {
@@ -199,65 +338,120 @@ async function cancelarComanda(comandaId) {
 }
 
 async function transferirMesa(mesaId) {
-  const r = await fetch('/api/mesas');
-  const mesas = await r.json();
-  const disponiveis = mesas.filter(m => m.status === 'disponivel');
-  if (!disponiveis.length) { toast('Nenhuma mesa disponível para transferir', 'error'); return;
+  const r = await fetch('/api/mesas/disponiveis');
+  const disponiveis = await r.json();
+  if (!disponiveis.length) { toast('Nenhuma mesa disponível para transferir', 'error'); return; }
+  window._transferDisponiveis = disponiveis;
+  window._transferMesaOrigem = mesaId;
+  const corpo = document.getElementById('pagamento-mesa-corpo');
+  corpo.innerHTML = `
+    <div class="space-y-3">
+      <p class="text-slate-300">Selecione a mesa de destino:</p>
+      <div class="grid grid-cols-4 gap-2">
+        ${disponiveis.map(m => `
+          <button onclick="confirmarTransferencia(${m.id}, ${m.numero})" class="btn btn-secondary p-3 text-center">
+            <div class="text-lg font-bold">${String(m.numero).padStart(2,'0')}</div>
+            <div class="text-xs text-slate-400">${m.capacidade} lug.</div>
+          </button>
+        `).join('')}
+      </div>
+      <button onclick="fecharModalPagamentoMesa()" class="btn btn-secondary w-full">Cancelar</button>
+    </div>
+  `;
+  document.querySelector('#modal-pagamento-mesa h3').textContent = '↗ Transferir Mesa';
+  document.getElementById('modal-pagamento-mesa').classList.remove('hidden');
 }
-  const num = prompt('Transferir para qual mesa?\n\nMesas disponíveis: ' + disponiveis.map(m=>m.numero).join(', '));
-  if (!num) return;
-  const destino = disponiveis.find(m => m.numero === parseInt(num));
-  if (!destino) { toast('Mesa não encontrada ou ocupada', 'error'); return; }
-  const r2 = await fetch(`/api/comanda/${comandaAtual}/transferir`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mesa_destino_id: destino.id}) });
+
+async function confirmarTransferencia(mesaDestinoId, mesaDestinoNumero) {
+  const r2 = await fetch(`/api/comanda/${window._transferMesaOrigem}/transferir`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mesa_destino_id: mesaDestinoId}) });
   const d = await r2.json();
-  if (d.ok) { toast(`Transferido para Mesa ${destino.numero}!`); fecharModal(); loadMesas(); }
+  if (d.ok) { toast(`Transferido para Mesa ${String(mesaDestinoNumero).padStart(2,'0')}!`); fecharModalPagamentoMesa(); fecharModal(); loadMesas(); }
   else toast(d.erro || 'Erro', 'error');
 }
 
-async function trocarGarcom(mesaId) {
-  const novoGarcom = prompt('Novo garçom:\n\n' + garcons.map(g=>`${g.id} - ${g.nome}`).join('\n'));
-  if (!novoGarcom) return;
-  const garcomId = parseInt(novoGarcom);
-  const g = garcons.find(x => x.id === garcomId);
-  if (!g) { toast('Garçom inválido', 'error'); return; }
-  const r = await fetch(`/api/comanda/${comandaAtual}/trocar_garcom`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({garcom_id: garcomId}) });
-  const d = await r.json();
-  if (d.ok) { toast(`Garçom alterado para ${g.nome}`); abrirMesa(mesaAtual.id); loadMesas(); }
-  else toast(d.erro || 'Erro', 'error');
+async function onBuscaProdInput(val) {
+  clearTimeout(buscaTimer);
+  const q = (val||'').trim();
+  const dd = document.getElementById('autocomplete-prod');
+  if (q.length < 3) { dd.classList.add('hidden'); return; }
+  buscaTimer = setTimeout(async () => {
+    const r = await fetch('/api/buscar_produto?q=' + encodeURIComponent(q));
+    const lista = await r.json();
+    if (!lista.length) { dd.innerHTML = '<div class="p-2 text-slate-400 text-sm">Nenhum produto</div>'; dd.classList.remove('hidden'); return; }
+    dd.innerHTML = lista.map(p => `
+      <div class="ac-item" onclick="iniciarAddItem(${p.id},'${p.nome.replace(/'/g,"\\'")}',${p.preco},${p.estoque})">
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-sm truncate">${p.nome}</div>
+          <div class="text-xs text-slate-400">${p.codigo_barras||'s/ código'} · Est: ${p.estoque} ${p.unidade}</div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="text-brand-500 font-bold text-sm">${fmtMoeda(p.preco)}</span>
+          <button class="btn btn-primary text-xs px-2">+ Add</button>
+        </div>
+      </div>
+    `).join('');
+    dd.classList.remove('hidden');
+  }, 250);
 }
 
-async function buscarProd() {
-  const q = document.getElementById('busca-prod').value.trim();
-  if (!q) return;
-  const r = await fetch('/api/buscar_produto?q=' + encodeURIComponent(q));
-  const lista = await r.json();
-  const cont = document.getElementById('result-busca');
-  if (!lista.length) { cont.innerHTML = '<div class="text-slate-400 text-sm">Nada encontrado</div>'; return; }
+document.addEventListener('click', e => {
+  const dd = document.getElementById('autocomplete-prod');
+  const bi = document.getElementById('busca-prod');
+  if (dd && !dd.contains(e.target) && e.target !== bi) dd.classList.add('hidden');
+});
+
+function iniciarAddItem(pid, nome, preco, estoque) {
+  document.getElementById('autocomplete-prod').classList.add('hidden');
+  document.getElementById('autocomplete-prod').innerHTML = '';
+  obsProdutoNome = nome;
+  obsCallback = () => {
+    const obs = document.getElementById('obs-input').value.trim();
+    abrirModalQtd(nome, async (qtd) => {
+      const r = await fetch(`/api/comanda/${comandaAtual}/adicionar`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({produto_id: pid, quantidade: qtd, observacao: obs})
+      });
+      const d = await r.json();
+      if (d.ok) { toast('Item adicionado!'); abrirMesa(mesaAtual.id); loadMesas(); }
+      else toast(d.erro || 'Erro', 'error');
+    });
+  };
+  abrirModalObs();
+}
+
+async function carregarAcessoRapidoMesa() {
+  if (!_acessoRapidoCacheM) {
+    const r = await fetch('/api/config/acesso_rapido');
+    _acessoRapidoCacheM = await r.json();
+  }
+  const cfg = _acessoRapidoCacheM;
+  let lista = [];
+  if (cfg.modo === 'manual') { lista = cfg.produtos_fixos || []; }
+  else if (cfg.modo === 'misto') {
+    lista = cfg.produtos_fixos || [];
+    if (lista.length < 8) {
+      const r2 = await fetch('/api/produtos/mais_vendidos');
+      const mv = await r2.json();
+      const ids = new Set(lista.map(p => p.id));
+      for (const p of mv) { if (!ids.has(p.id) && lista.length < 8) lista.push(p); }
+    }
+  } else {
+    const r2 = await fetch('/api/produtos/mais_vendidos');
+    lista = await r2.json();
+  }
+  const cont = document.getElementById('ar-mesa-lista');
+  if (!lista || !lista.length) { cont.innerHTML = '<div class="text-slate-400 text-sm">Nenhum produto</div>'; return; }
   cont.innerHTML = lista.map(p => `
-    <div class="flex items-center justify-between p-2 rounded bg-ink-700 hover:bg-ink-600">
+    <div class="ac-item" onclick="iniciarAddItem(${p.id},'${p.nome.replace(/'/g,"\\'")}',${p.preco},${p.estoque})">
       <div class="flex-1 min-w-0">
         <div class="font-medium text-sm truncate">${p.nome}</div>
-        <div class="text-xs text-slate-400">${p.codigo_barras||'s/ código'} · Est: ${p.estoque} ${p.unidade}</div>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         <span class="text-brand-500 font-bold text-sm">${fmtMoeda(p.preco)}</span>
-        <button onclick="addItem(${p.id})" class="btn btn-primary text-xs px-2">+ Add</button>
+        <button class="btn btn-primary text-xs px-2" ${p.estoque<=0?'disabled':''}>+</button>
       </div>
     </div>
   `).join('');
-}
-
-async function addItem(pid) {
-  const qtd = parseFloat(prompt('Quantidade:', '1') || '1');
-  if (!qtd) return;
-  const obs = prompt('Observação do item (opcional):') || '';
-  const r = await fetch(`/api/comanda/${comandaAtual}/adicionar`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({produto_id: pid, quantidade: qtd, observacao: obs})
-  });
-  const d = await r.json();
-  if (d.ok) { toast('Item adicionado!'); abrirMesa(mesaAtual.id); loadMesas(); }
-  else toast(d.erro || 'Erro', 'error');
 }
 
 async function removerItem(id) {
@@ -266,21 +460,117 @@ async function removerItem(id) {
   abrirMesa(mesaAtual.id); loadMesas();
 }
 
-async function fecharMesa(id) {
-  const desconto = parseFloat(prompt('Desconto (R$):', '0') || '0');
-  const forma = prompt('Forma de pagamento (Dinheiro/PIX/Crédito/Débito):', 'Dinheiro') || 'Dinheiro';
-  const r = await fetch(`/api/mesas/${id}/fechar`, {
+function abrirPagamentoMesa(mesaId, total) {
+  const corpo = document.getElementById('pagamento-mesa-corpo');
+  corpo.innerHTML = `
+    <div class="text-center">
+      <div class="text-sm text-slate-400">Total da mesa</div>
+      <div class="text-2xl font-bold text-brand-500">${fmtMoeda(total)}</div>
+    </div>
+    <div>
+      <label class="text-sm font-medium">Desconto (R$)</label>
+      <input id="pag-mesa-desconto" type="number" step="0.01" value="0" class="w-full px-3 py-2 rounded mt-1">
+    </div>
+    <div>
+      <label class="text-sm font-medium">Forma de Pagamento</label>
+      <div id="pag-mesa-formas" class="grid grid-cols-3 gap-2 mt-1">
+        <button onclick="selFormaMesa('Dinheiro')" class="pag-btn active" data-forma="Dinheiro">💵 Dinheiro</button>
+        <button onclick="selFormaMesa('PIX')" class="pag-btn" data-forma="PIX">📱 PIX</button>
+        <button onclick="selFormaMesa('Crédito')" class="pag-btn" data-forma="Crédito">💳 Crédito</button>
+        <button onclick="selFormaMesa('Débito')" class="pag-btn" data-forma="Débito">💳 Débito</button>
+        <button onclick="selFormaMesa('Fiado')" class="pag-btn" data-forma="Fiado">📒 Fiado</button>
+      </div>
+    </div>
+    <div id="pag-mesa-troco" class="hidden">
+      <label class="text-sm font-medium">💰 Valor Recebido</label>
+      <input id="pag-mesa-valor-recebido" type="number" step="0.01" value="0" class="w-full px-3 py-2 rounded mt-1" oninput="calcularTrocoMesa()">
+      <div class="flex justify-between text-sm mt-1">
+        <span class="text-slate-400">🔄 Troco</span>
+        <span id="pag-mesa-troco-val" class="font-bold text-green-400">R$ 0,00</span>
+      </div>
+    </div>
+    <div id="pag-mesa-fiado" class="hidden">
+      <label class="text-sm font-medium">🔍 Buscar cliente</label>
+      <input id="pag-mesa-cli-busca" placeholder="Nome, CPF ou telefone..." class="w-full px-3 py-2 rounded mt-1" oninput="buscarClienteMesa()">
+      <div id="pag-mesa-cli-result" class="max-h-32 overflow-auto space-y-1 text-sm mt-1"></div>
+      <div id="pag-mesa-cli-escolhido" class="hidden p-2 rounded bg-yellow-900/30 border border-yellow-700 text-sm mt-1"></div>
+      <input type="hidden" id="pag-mesa-cli-id">
+    </div>
+    <button onclick="confirmarPagamentoMesa(${mesaId})" class="btn btn-success w-full">✅ Confirmar Fechamento</button>
+  `;
+  window._pagMesaTotal = total;
+  window._pagMesaForma = 'Dinheiro';
+  document.getElementById('modal-pagamento-mesa').classList.remove('hidden');
+}
+function fecharModalPagamentoMesa() { document.getElementById('modal-pagamento-mesa').classList.add('hidden'); }
+
+function selFormaMesa(f) {
+  window._pagMesaForma = f;
+  document.querySelectorAll('#pag-mesa-formas .pag-btn').forEach(b => b.classList.toggle('active', b.dataset.forma === f));
+  document.getElementById('pag-mesa-troco').classList.toggle('hidden', f !== 'Dinheiro');
+  document.getElementById('pag-mesa-fiado').classList.toggle('hidden', f !== 'Fiado');
+}
+
+function calcularTrocoMesa() {
+  const total = window._pagMesaTotal || 0;
+  const desc = parseFloat(document.getElementById('pag-mesa-desconto').value) || 0;
+  const recebido = parseFloat(document.getElementById('pag-mesa-valor-recebido').value) || 0;
+  const troco = Math.max(0, recebido - (total - desc));
+  document.getElementById('pag-mesa-troco-val').textContent = fmtMoeda(troco);
+}
+
+async function buscarClienteMesa() {
+  const q = document.getElementById('pag-mesa-cli-busca').value.trim();
+  const r = await fetch('/api/clientes/buscar?q=' + encodeURIComponent(q));
+  const lista = await r.json();
+  const cont = document.getElementById('pag-mesa-cli-result');
+  cont.innerHTML = lista.length === 0 ? '<div class="text-slate-400 px-2 py-1">Nenhum cliente</div>' :
+    lista.map(c => `<div onclick="escolherClienteMesa(${c.id}, '${c.nome.replace(/'/g,"\\'")}', ${c.saldo_devedor}, ${c.limite_fiado})" class="p-2 rounded bg-ink-700 hover:bg-ink-600 cursor-pointer flex justify-between">
+      <div><div class="font-medium">${c.nome}</div><div class="text-xs text-slate-400">${c.telefone||''}</div></div>
+      <div class="text-right text-xs"><div class="${c.saldo_devedor>0?'text-red-400':'text-slate-400'}">${fmtMoeda(c.saldo_devedor)}</div></div>
+    </div>`).join('');
+}
+
+function escolherClienteMesa(id, nome, saldo, limite) {
+  document.getElementById('pag-mesa-cli-id').value = id;
+  document.getElementById('pag-mesa-cli-escolhido').classList.remove('hidden');
+  document.getElementById('pag-mesa-cli-escolhido').innerHTML = `📒 <b>${nome}</b> • Saldo: ${fmtMoeda(saldo)} <button onclick="document.getElementById('pag-mesa-cli-id').value='';document.getElementById('pag-mesa-cli-escolhido').classList.add('hidden')" class="ml-2 text-red-400">✕</button>`;
+  document.getElementById('pag-mesa-cli-result').innerHTML = '';
+}
+
+async function confirmarPagamentoMesa(mesaId) {
+  const forma = window._pagMesaForma || 'Dinheiro';
+  const desconto = parseFloat(document.getElementById('pag-mesa-desconto').value) || 0;
+  if (forma === 'Fiado' && !document.getElementById('pag-mesa-cli-id').value)
+    return toast('Selecione um cliente para fiado', 'error');
+  if (forma === 'Dinheiro') {
+    const total = window._pagMesaTotal || 0;
+    const recebido = parseFloat(document.getElementById('pag-mesa-valor-recebido').value) || 0;
+    if (recebido < (total - desconto)) return toast('Valor recebido menor que o total', 'error');
+  }
+  const r = await fetch(`/api/mesas/${mesaId}/fechar`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({desconto, forma_pagamento: forma})
   });
   const d = await r.json();
   if (d.ok) {
+    fecharModalPagamentoMesa();
     toast(`Venda #${d.venda_id} finalizada! Total: ${fmtMoeda(d.total)}`);
     fecharModal(); loadMesas();
+    _acessoRapidoCacheM = null;
+    mostrarModalImpressao('/imprimir/mesa/' + comandaAtual, '🖨️ Imprimir Fechamento da Mesa?');
   } else toast(d.erro || 'Erro', 'error');
 }
 
-loadGarcons();
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (!document.getElementById('modal-pagamento-mesa').classList.contains('hidden')) fecharModalPagamentoMesa();
+    if (!document.getElementById('modal-obs').classList.contains('hidden')) fecharModalObs();
+    if (!document.getElementById('modal-quantidade').classList.contains('hidden')) fecharModalQtd();
+    if (!document.getElementById('modal-nova-mesa').classList.contains('hidden')) fecharModalNovaMesa();
+  }
+});
+
 loadMesas();
 setInterval(loadMesas, 10000);
 </script>

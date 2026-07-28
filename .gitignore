@@ -1,11 +1,18 @@
-# Banco de dados SQLite
+# Banco de dados SQLite (produção nunca versionada)
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+*.db3
+*.sqlite
+*.sqlite3
 
 # Arquivos de ambiente
 .env
+.env.local
+.env.development
+.env.production
+.env.test
 
 # Python
 __pycache__/
@@ -18,11 +25,13 @@ dist/
 build/
 *.egg
 
-# IDE
+# IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+*.orig
 
 # Logs
 *.log
@@ -32,17 +41,26 @@ flask_out.txt
 # Pytest
 .pytest_cache/
 
-# Artefatos locais de gerenciamento do Flask no Windows
+# Artefatos do Flask / Windows
 start_flask.bat
+start_flask.sh
 
-# Scripts temporarios de verificacao de homologacao
+# Relatórios locais de levantamento/análise
+LEVANTAMENTO_COMPLETO_SISTEMA.md
+PREPARACAO_GITHUB.md
+
+# Scripts temporários de verificação
 temp_hml_check.py
+_filter_secrets.py
 
-# Backups locais de banco (rodando por manutencao/backup do sistema)
+# Backups locais de banco (gerados pelo sistema)
 static/uploads/backups/
 
-# Imagem de referencia interna (nao e publica)
-IMAGEM DO SISTEMA/
+# Uploads reais de usuários (não versionar dados reais)
+static/uploads/migration_tmp/
 
-# Outros
-PARA INICIAR O DIA SEGUINTE.png
+# Imagens de referência interna (não públicas)
+IMAGEM DO SISTEMA/
+PASTA DE TELAS/
+
+PARA INICIAR O DIA SEGUINTE .png

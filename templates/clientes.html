@@ -10,8 +10,9 @@
 
 <div class="flex gap-2 mb-4 flex-wrap">
   <input id="busca" placeholder="🔍 Buscar cliente (nome, CPF, telefone)..." class="flex-1 px-3 py-2 rounded" oninput="listar()">
+  <button onclick="window.open('/imprimir/relatorio/clientes','_blank')" class="btn btn-primary">🖨 Imprimir</button>
   {% if session.get('usuario_nivel') == 'admin' %}
-  <button onclick="abrir()" class="btn btn-primary">+ Novo Cliente</button>
+  <button onclick="abrir()" class="btn btn-secondary">+ Novo Cliente</button>
   {% endif %}
 </div>
 
