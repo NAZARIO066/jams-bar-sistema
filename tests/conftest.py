@@ -34,13 +34,7 @@ def client():
 
 
 @pytest.fixture(autouse=True)
-def _clear_rate_limit():
-    with app.app_context():
-        try:
-            from database import get_db
-            db = get_db()
-            db.execute("DELETE FROM login_attempts")
-            db.commit()
-        except Exception:
-            pass
+def _auto_cleanup(client):
+    """Each test gets a fresh temp DB — no cleanup needed.
+    This fixture exists only to ensure client fixture runs before every test."""
     yield

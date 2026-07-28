@@ -398,15 +398,18 @@ class TestEmpresaEBackup:
 class TestAutorizacaoPermissoes:
 
     def _ensure_func_user(self):
+        import sqlite3
         from werkzeug.security import generate_password_hash
-        db = get_db()
-        func = db.execute("SELECT id FROM usuarios WHERE login='funcionario'").fetchone()
+        db_path = app.config["DATABASE"]
+        conn = sqlite3.connect(db_path)
+        func = conn.execute("SELECT id FROM usuarios WHERE login='funcionario'").fetchone()
         if not func:
-            db.execute(
+            conn.execute(
                 "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
                 ("Funcionário", "funcionario", generate_password_hash(os.environ["FUNC_SENHA"]), "funcionario")
             )
-            db.commit()
+            conn.commit()
+        conn.close()
 
     def _login_funcionario(self, client):
         self._ensure_func_user()
