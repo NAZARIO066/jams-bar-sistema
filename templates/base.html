@@ -1,102 +1,114 @@
 <!doctype html>
-<html lang="pt-br" data-theme="dark">
+<html lang="pt-BR" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf-token" content="{{ session.get('_csrf_token', '') }}">
 <title>{% block title %}JAM'S BURGUER{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/clean-theme.css') }}">
 <script>
   tailwind.config = {
     theme: {
       extend: {
         colors: {
-          brand: { 500:'#D4AF37', 600:'#C5A028', 700:'#B8860B' },
-          ink:   { 900:'#0D0D0D', 800:'#1A1A1A', 700:'#222222', 600:'#2A2A2A' }
+          brand: { 500:'#D7A83E', 600:'#B98222', 700:'#8C5D14' },
+          ink:   { 900:'#080807', 800:'#11110F', 700:'#191815', 600:'#24221D' }
         }
       }
     }
   }
 </script>
 </head>
-<body style="background:#0D0D0D;color:#FFFFFF;min-height:100vh;">
+<body class="app-body">
 
 {% if session.get('usuario_id') %}
-<div class="flex min-h-screen">
-  <!-- Sidebar Premium -->
-  <aside class="w-64 sidebar flex flex-col">
-    <div class="p-5" style="border-bottom:1px solid rgba(212,175,55,0.1);">
+<div class="flex min-h-screen app-shell" id="app-shell">
+  <aside class="w-64 sidebar flex flex-col" id="sidebar" aria-label="Navegação principal">
+    <div class="p-5 sidebar-top">
       <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0" id="logo-wrapper" style="background:linear-gradient(135deg,#D4AF37,#B8860B);box-shadow:0 0 20px rgba(212,175,55,0.25);">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 sidebar-logo" id="logo-wrapper">
           <img src="{{ url_for('static', filename='uploads/logo.png') }}?t={{ logo_timestamp }}" class="w-full h-full object-cover" alt="Logo JAM'S">
         </div>
-        <div>
+        <div class="sidebar-brand-copy">
           <div class="sidebar-brand">JAM'S BURGUER</div>
-          <div class="sidebar-sub">Lanchonete e Conveniência</div>
+          <div class="sidebar-sub">Gestão comercial</div>
         </div>
+        <button type="button" id="sidebar-toggle" class="sidebar-collapse-btn" aria-label="Recolher menu" title="Recolher menu">
+          <i data-lucide="panel-left-close" aria-hidden="true"></i>
+        </button>
       </div>
     </div>
 
     <nav class="flex-1 p-3 space-y-1 text-sm">
-      <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'dashboard' else '' }}"><span class="nav-icon">📊</span> Dashboard</a>
-      <a href="{{ url_for('mesas') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'mesas' else '' }}"><span class="nav-icon">🪑</span> Mesas</a>
-      <a href="{{ url_for('vendas') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'vendas' else '' }}"><span class="nav-icon">💰</span> PDV / Vendas</a>
-      <a href="{{ url_for('produtos') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'produtos' else '' }}"><span class="nav-icon">📦</span> Produtos</a>
-      <a href="{{ url_for('estoque') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'estoque' else '' }}"><span class="nav-icon">📋</span> Estoque</a>
-      <a href="{{ url_for('garcons') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'garcons' else '' }}"><span class="nav-icon">🧑‍🍳</span> Garçons</a>
-      <a href="{{ url_for('caixa') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'caixa' else '' }}"><span class="nav-icon">💵</span> Caixa</a>
-      <a href="{{ url_for('clientes') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'clientes' else '' }}"><span class="nav-icon">👤</span> Clientes / Fiado</a>
-      <a href="{{ url_for('contas_pagar') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'contas_pagar' else '' }}"><span class="nav-icon">💰</span> Contas a Pagar</a>
-      <a href="{{ url_for('relatorios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'relatorios' else '' }}"><span class="nav-icon">📈</span> Relatórios</a>
-      {% if session.get('usuario_nivel') == 'admin' %}
-        <div style="border-top:1px solid rgba(212,175,55,0.08);margin:.5rem 0;padding-top:.5rem;">
-          <a href="{{ url_for('usuarios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'usuarios' else '' }}"><span class="nav-icon">👥</span> Usuários</a>
-          <a href="{{ url_for('auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'auditoria' else '' }}"><span class="nav-icon">🔍</span> Auditoria</a>
-          <div style="border-top:1px solid rgba(212,175,55,0.06);margin:.4rem 0;padding-top:.4rem;">
-            <div class="px-2 py-1 text-xs font-semibold" style="color:#D4AF37;letter-spacing:0.08em;text-transform:uppercase;">Ferramentas</div>
-            <a href="{{ url_for('migracao_etapa1') }}" class="nav-item {{ 'nav-item-active' if 'migracao' in (request.endpoint or '') else '' }}"><span class="nav-icon">🔄</span> Assistente de Migração</a>
-            <a href="{{ url_for('manutencao_dashboard') }}" class="nav-item {{ 'nav-item-active' if 'manutencao' in (request.endpoint or '') else '' }}"><span class="nav-icon">🛠</span> Centro de Manutenção</a>
-            <a href="{{ url_for('manutencao_auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'manutencao_auditoria' else '' }}"><span class="nav-icon">📋</span> Auditoria Manutenção</a>
+      <a href="{{ url_for('dashboard') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'dashboard' else '' }}" title="Dashboard"><i data-lucide="layout-dashboard" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Dashboard</span></a>
+      {% if pode('mesas.acessar') %}<a href="{{ url_for('mesas') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'mesas' else '' }}" title="Mesas"><i data-lucide="armchair" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Mesas</span></a>{% endif %}
+      {% if pode('pdv.acessar') %}<a href="{{ url_for('vendas') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'vendas' else '' }}" title="PDV e vendas"><i data-lucide="shopping-cart" class="nav-icon" aria-hidden="true"></i><span class="nav-label">PDV / Vendas</span></a>{% endif %}
+      {% if pode('produtos.visualizar') %}<a href="{{ url_for('produtos') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'produtos' else '' }}" title="Produtos"><i data-lucide="package" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Produtos</span></a>{% endif %}
+      {% if pode('estoque.visualizar') %}<a href="{{ url_for('estoque') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'estoque' else '' }}" title="Estoque"><i data-lucide="boxes" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Estoque</span></a>{% endif %}
+      {% if pode('garcons.acessar') %}<a href="{{ url_for('garcons') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'garcons' else '' }}" title="Garçons"><i data-lucide="users-round" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Garçons</span></a>{% endif %}
+      {% if pode('caixa.acessar') %}<a href="{{ url_for('caixa') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'caixa' else '' }}" title="Caixa"><i data-lucide="landmark" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Caixa</span></a>{% endif %}
+      {% if pode('clientes.acessar') %}<a href="{{ url_for('clientes') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'clientes' else '' }}" title="Clientes e fiado"><i data-lucide="contact-round" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Clientes / Fiado</span></a>{% endif %}
+      {% if pode('contas.acessar') %}<a href="{{ url_for('contas_pagar') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'contas_pagar' else '' }}" title="Contas a pagar"><i data-lucide="calendar-clock" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Contas a Pagar</span></a>{% endif %}
+      {% if pode('relatorios.visualizar') and pode('financeiro.visualizar') %}<a href="{{ url_for('relatorios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'relatorios' else '' }}" title="Relatórios"><i data-lucide="chart-no-axes-combined" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Relatórios</span></a>{% endif %}
+      {% if pode('usuarios.criar') or pode('permissoes.alterar') or pode('auditoria.visualizar') or pode('migracao.acessar') or pode('manutencao.acessar') or pode('backup.gerar') or pode('backup.restaurar') %}
+        <div class="nav-section">
+          <div class="nav-section-label">Administração</div>
+          {% if pode('usuarios.criar') or pode('permissoes.alterar') %}<a href="{{ url_for('usuarios') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'usuarios' else '' }}" title="Usuários"><i data-lucide="user-cog" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Usuários e Acessos</span></a>{% endif %}
+          {% if pode('auditoria.visualizar') %}<a href="{{ url_for('auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'auditoria' else '' }}" title="Auditoria"><i data-lucide="shield-check" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Auditoria</span></a>{% endif %}
+          {% if pode('migracao.acessar') or pode('manutencao.acessar') or pode('backup.gerar') or pode('backup.restaurar') %}
+          <div class="nav-section" style="border-top:1px solid;margin:.4rem 0;padding-top:.4rem;">
+            <div class="nav-section-label">Ferramentas</div>
+            {% if pode('migracao.acessar') %}<a href="{{ url_for('migracao_etapa1') }}" class="nav-item {{ 'nav-item-active' if 'migracao' in (request.endpoint or '') else '' }}" title="Assistente de migração"><i data-lucide="database-zap" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Assistente de Migração</span></a>{% endif %}
+            {% if pode('backup.gerar') or pode('backup.restaurar') %}<a href="{{ url_for('manutencao_backup') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'manutencao_backup' else '' }}" title="Backups"><i data-lucide="archive-restore" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Backups</span></a>{% endif %}
+            {% if pode('manutencao.acessar') %}<a href="{{ url_for('manutencao_dashboard') }}" class="nav-item {{ 'nav-item-active' if 'manutencao' in (request.endpoint or '') else '' }}" title="Centro de manutenção"><i data-lucide="wrench" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Centro de Manutenção</span></a>
+            <a href="{{ url_for('manutencao_auditoria') }}" class="nav-item {{ 'nav-item-active' if request.endpoint == 'manutencao_auditoria' else '' }}" title="Auditoria de manutenção"><i data-lucide="clipboard-check" class="nav-icon" aria-hidden="true"></i><span class="nav-label">Auditoria Manutenção</span></a>{% endif %}
           </div>
+          {% endif %}
         </div>
       {% endif %}
     </nav>
 
-    <div class="p-3" style="border-top:1px solid rgba(212,175,55,0.1);">
-      <div class="flex items-center gap-3 p-2 rounded-lg" style="background:rgba(212,175,55,0.05);">
-        <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm" style="background:linear-gradient(135deg,#D4AF37,#B8860B);color:#111;">
-          {{ (session.get('usuario_nome') or 'U')[0]|upper }}
+    <div class="p-3 sidebar-footer">
+      <div class="flex items-center gap-3 p-2 rounded-lg sidebar-user">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center user-avatar" aria-hidden="true">
+          <i data-lucide="{{ 'shield-check' if usuario_perfil == 'Administrador' else 'user-round' }}"></i>
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium truncate" style="color:#FFFFFF;">{{ session.get('usuario_nome') }}</div>
-          <div class="text-xs" style="color:#999;">{{ 'Administrador' if session.get('usuario_nivel')=='admin' else 'Funcionário' }}</div>
+          <div class="text-sm font-medium truncate user-name">{{ session.get('usuario_nome') }}</div>
+          <div class="text-xs user-role">{{ usuario_perfil }}</div>
         </div>
-        {% if session.get('usuario_nivel') == 'admin' %}
-          <button onclick="abrirConfig()" class="hover-rotate" style="color:#D4AF37;font-size:1rem;cursor:pointer;background:none;border:none;" title="Configurações">⚙️</button>
+        {% if pode('configuracoes.acessar') or pode('backup.gerar') %}
+          <button type="button" onclick="abrirConfig()" class="sidebar-action" title="Configurações" aria-label="Configurações"><i data-lucide="settings" aria-hidden="true"></i></button>
         {% endif %}
-        <a href="{{ url_for('logout') }}" style="color:#666;font-size:1.1rem;cursor:pointer;text-decoration:none;" title="Sair">⎋</a>
+        <a href="{{ url_for('logout') }}" class="sidebar-action" title="Sair" aria-label="Sair"><i data-lucide="log-out" aria-hidden="true"></i></a>
       </div>
     </div>
   </aside>
 
   <!-- Main Content -->
-  <main class="flex-1 overflow-auto" style="background:#0D0D0D;">
+  <main class="flex-1 overflow-auto app-main">
     <header class="sticky top-0 z-10 header-bar px-6 py-3 flex items-center justify-between">
-      <h1 class="header-title">{% block page_title %}{% endblock %}</h1>
-      <div class="flex items-center gap-3">
-        <div id="alertas-btn" class="relative cursor-pointer text-lg" title="Alertas" style="color:#D4AF37;">🔔
-          <span id="alertas-count" class="hidden absolute -top-1 -right-1 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center" style="background:#dc2626;">0</span>
-        </div>
-        <button id="theme-toggle" class="text-lg" title="Alternar tema" style="background:none;border:none;cursor:pointer;">🌙</button>
-        <div class="text-sm" id="relogio" style="color:#999;font-family:'Inter',monospace;">--:--:--</div>
+      <div class="flex items-center gap-3 min-w-0">
+        <button type="button" id="mobile-menu-toggle" class="header-tool mobile-menu-toggle" aria-label="Abrir menu"><i data-lucide="menu" aria-hidden="true"></i></button>
+        <h1 class="header-title truncate">{% block page_title %}{% endblock %}</h1>
+      </div>
+      <div class="flex items-center gap-3 header-tools">
+        <button id="alertas-btn" class="relative header-tool" title="Alertas" aria-label="Alertas"><i data-lucide="bell" aria-hidden="true"></i>
+          <span id="alertas-count" class="hidden notification-badge">0</span>
+        </button>
+        <button id="theme-toggle" class="header-tool" title="Alternar tema" aria-label="Alternar tema"><i data-lucide="sun-moon" aria-hidden="true"></i></button>
+        <div class="header-clock" aria-label="Horário atual"><i data-lucide="clock-3" aria-hidden="true"></i><span id="relogio">--:--:--</span></div>
       </div>
     </header>
-    <div class="p-6">
+    <div class="p-6 app-content">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for cat, msg in messages %}
@@ -115,8 +127,8 @@
 <div id="scanner-modal" class="hidden modal-bg">
   <div class="modal-box" style="max-width:28rem">
     <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid rgba(212,175,55,0.1);">
-      <h3 class="font-bold text-lg" style="color:#D4AF37;">📷 Ler Código de Barras</h3>
-      <button onclick="fecharScanner()" style="color:#999;cursor:pointer;background:none;border:none;font-size:1.2rem;">✕</button>
+      <h3 class="modal-title"><i data-lucide="scan-barcode" aria-hidden="true"></i> Ler código de barras</h3>
+      <button onclick="fecharScanner()" class="icon-btn" aria-label="Fechar leitor"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <div class="p-4">
       <div id="scanner-video" style="width:100%;border-radius:.5rem;overflow:hidden"></div>
@@ -129,8 +141,8 @@
 <div id="alertas-modal" class="hidden modal-bg" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="modal-box" style="max-width:28rem;max-height:80vh;overflow:auto">
     <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid rgba(212,175,55,0.1);">
-      <h3 class="font-bold text-lg" style="color:#D4AF37;">🔔 Alertas</h3>
-      <button onclick="document.getElementById('alertas-modal').classList.add('hidden')" style="color:#999;cursor:pointer;background:none;border:none;font-size:1.2rem;">✕</button>
+      <h3 class="modal-title"><i data-lucide="bell" aria-hidden="true"></i> Alertas</h3>
+      <button onclick="document.getElementById('alertas-modal').classList.add('hidden')" class="icon-btn" aria-label="Fechar alertas"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <div id="alertas-content" class="p-4 space-y-2 text-sm"></div>
   </div>
@@ -140,10 +152,11 @@
 <div id="config-modal" class="hidden modal-bg" onclick="if(event.target===this)fecharConfig()">
   <div class="modal-box" style="max-width:28rem">
     <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid rgba(212,175,55,0.1);">
-      <h3 class="font-bold text-lg" style="color:#D4AF37;">⚙️ Configurações</h3>
-      <button onclick="fecharConfig()" style="color:#999;cursor:pointer;background:none;border:none;font-size:1.2rem;">✕</button>
+      <h3 class="modal-title"><i data-lucide="settings" aria-hidden="true"></i> Configurações</h3>
+      <button onclick="fecharConfig()" class="icon-btn" aria-label="Fechar configurações"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <div class="p-4 space-y-4">
+      {% if pode('configuracoes.acessar') %}
       <div>
         <label class="block text-sm font-medium mb-2" style="color:#D6D6D6;">Logo do Sistema</label>
         <div class="flex items-center gap-3 mb-3">
@@ -161,19 +174,23 @@
         </div>
         <div class="flex gap-2">
           <label class="btn btn-primary cursor-pointer">
-            📁 Selecionar Imagem
+            <i data-lucide="image-up" aria-hidden="true"></i> Selecionar imagem
             <input type="file" id="logo-input" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp" class="hidden" onchange="enviarLogo(this)">
           </label>
-          <button onclick="removerLogo()" class="btn btn-secondary">🗑 Remover</button>
+          <button onclick="removerLogo()" class="btn btn-secondary"><i data-lucide="trash-2" aria-hidden="true"></i> Remover</button>
         </div>
         <div id="logo-status" class="mt-2 text-sm"></div>
       </div>
+      {% endif %}
+      {% if pode('backup.gerar') %}
       <div>
         <label class="block text-sm font-medium mb-2" style="color:#D6D6D6;">Backup do Sistema</label>
         <p class="text-xs mb-3" style="color:#999;">Faça o download do banco de dados atual.</p>
-        <button onclick="fazerBackup()" class="btn btn-primary" id="btn-backup">📥 Baixar Backup</button>
+        <button onclick="fazerBackup()" class="btn btn-primary" id="btn-backup"><i data-lucide="download" aria-hidden="true"></i> Baixar backup</button>
         <div id="backup-status" class="mt-2 text-sm"></div>
       </div>
+      {% endif %}
+      {% if pode('configuracoes.acessar') %}
       <div>
         <label class="block text-sm font-medium mb-2" style="color:#D6D6D6;">Dados da Empresa</label>
         <div class="space-y-2">
@@ -187,9 +204,10 @@
           <input id="emp-horario" placeholder="Horário de Funcionamento" class="w-full px-3 py-2 rounded">
           <textarea id="emp-observacao" placeholder="Observações" class="w-full px-3 py-2 rounded" rows="2"></textarea>
         </div>
-        <button onclick="salvarEmpresa()" class="btn btn-primary mt-3">💾 Salvar Dados</button>
+        <button onclick="salvarEmpresa()" class="btn btn-primary mt-3"><i data-lucide="save" aria-hidden="true"></i> Salvar dados</button>
         <div id="empresa-status" class="mt-2 text-sm"></div>
       </div>
+      {% endif %}
     </div>
   </div>
 </div>
@@ -208,15 +226,42 @@
   document.documentElement.setAttribute('data-theme', saved);
   const tbtn = document.getElementById('theme-toggle');
   if (tbtn) {
-    tbtn.textContent = saved === 'dark' ? '🌙' : '☀️';
+    tbtn.setAttribute('aria-label', saved === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro');
     tbtn.onclick = () => {
       const cur = document.documentElement.getAttribute('data-theme');
       const next = cur === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem(themeKey, next);
-      tbtn.textContent = next === 'dark' ? '🌙' : '☀️';
+      tbtn.setAttribute('aria-label', next === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro');
     };
   }
+
+  // Menu recolhível em telas grandes e painel móvel em telas menores.
+  const sidebarKey = 'jams-sidebar-collapsed';
+  const shell = document.getElementById('app-shell');
+  const sidebar = document.getElementById('sidebar');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+  function aplicarSidebar(recolhido) {
+    if (!shell) return;
+    shell.classList.toggle('sidebar-collapsed', recolhido);
+    if (sidebarToggle) {
+      sidebarToggle.setAttribute('aria-label', recolhido ? 'Expandir menu' : 'Recolher menu');
+      sidebarToggle.setAttribute('title', recolhido ? 'Expandir menu' : 'Recolher menu');
+    }
+  }
+  aplicarSidebar(localStorage.getItem(sidebarKey) === '1');
+  if (sidebarToggle) sidebarToggle.addEventListener('click', () => {
+    const recolhido = !shell.classList.contains('sidebar-collapsed');
+    aplicarSidebar(recolhido);
+    localStorage.setItem(sidebarKey, recolhido ? '1' : '0');
+  });
+  if (mobileMenuToggle) mobileMenuToggle.addEventListener('click', () => sidebar?.classList.toggle('mobile-open'));
+  document.addEventListener('click', event => {
+    if (window.innerWidth <= 900 && sidebar?.classList.contains('mobile-open') && !sidebar.contains(event.target) && !mobileMenuToggle?.contains(event.target)) {
+      sidebar.classList.remove('mobile-open');
+    }
+  });
 
   // Alertas polling
   async function refreshAlertas() {
@@ -232,9 +277,9 @@
       const content = document.getElementById('alertas-content');
       if (content) {
         let html = '';
-        (d.zerados || []).forEach(p => html += `<div class="p-3 rounded-lg" style="background:rgba(220,38,38,0.12);border:1px solid rgba(220,38,38,0.2);color:#f87171;">🚨 <b>${p.nome}</b> - Produto indisponível</div>`);
-        (d.criticos || []).filter(p => p.estoque > 0).forEach(p => html += `<div class="p-3 rounded-lg" style="background:rgba(202,138,4,0.12);border:1px solid rgba(202,138,4,0.2);color:#fbbf24;">⚠ <b>${p.nome}</b> - Estoque crítico: ${p.estoque} (mín ${p.estoque_minimo})</div>`);
-        if (!html) html = '<div class="text-center py-6" style="color:#666;">✅ Nenhum alerta</div>';
+        (d.zerados || []).forEach(p => html += `<div class="status-message status-error"><b>${escapeHtml(p.nome)}</b><span>Produto indisponível</span></div>`);
+        (d.criticos || []).filter(p => p.estoque > 0).forEach(p => html += `<div class="status-message status-warning"><b>${escapeHtml(p.nome)}</b><span>Estoque crítico: ${p.estoque} (mín. ${p.estoque_minimo})</span></div>`);
+        if (!html) html = '<div class="empty-inline">Nenhum alerta no momento.</div>';
         content.innerHTML = html;
       }
     } catch(e) {}
@@ -248,15 +293,32 @@
   window.toast = (msg, tipo='success') => {
     const t = document.createElement('div');
     t.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white animate-fade-in`;
-    t.style.background = tipo==='success' ? '#D4AF37' : '#dc2626';
-    t.style.color = tipo==='success' ? '#111' : '#fff';
+    t.style.background = tipo==='success' ? '#4F7D5B' : '#C8463B';
+    t.style.color = '#fff';
     t.style.fontWeight = '600';
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 3000);
   };
+  window.setButtonLoading = (button, loading, loadingText='Processando...') => {
+    if (!button) return;
+    if (loading) {
+      button.dataset.originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.classList.add('is-loading');
+      button.textContent = loadingText;
+    } else {
+      button.disabled = false;
+      button.classList.remove('is-loading');
+      if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  };
   window.fmtMoeda = v => 'R$ ' + (Number(v)||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   window.fmtData = s => s ? new Date(s).toLocaleString('pt-BR') : '';
+  window.escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  })[char]);
 
   // Scanner
   let scanner = null;
@@ -416,14 +478,77 @@
     }
   };
 
-  // Nav-icon gold filter
-  document.querySelectorAll('.nav-icon').forEach(el => {
-    el.style.display = 'inline-block';
-  });
+  const legacyIconMap = new Map([
+    ['🧑‍🍳','users-round'], ['🖨️','printer'], ['🖨','printer'], ['⚙️','settings'], ['✅','circle-check'], ['❌','circle-x'], ['⚠️','triangle-alert'],
+    ['📊','chart-no-axes-combined'], ['🪑','armchair'], ['💰','circle-dollar-sign'], ['📦','package'], ['📋','clipboard-list'],
+    ['👤','user-round'], ['👥','users-round'], ['📈','chart-no-axes-combined'], ['🔍','search'], ['🔄','refresh-cw'], ['🛠','wrench'],
+    ['🔔','bell'], ['📷','scan-barcode'], ['🗑','trash-2'], ['📁','folder-open'], ['📥','download'], ['💾','save'], ['🧾','receipt-text'],
+    ['💵','banknote'], ['📱','smartphone'], ['💳','credit-card'], ['📒','notebook-tabs'], ['📅','calendar-days'], ['⏱','clock-3'],
+    ['⚡','zap'], ['🚨','siren'], ['🚫','ban'], ['🚬','cigarette'], ['🥃','wine'], ['➕','circle-plus'], ['▶','play'], ['✕','x'],
+    ['⬇','download'], ['↺','rotate-ccw'], ['↗','arrow-up-right'], ['←','arrow-left'], ['⚠','triangle-alert'], ['✓','check'],
+    ['📤','upload'], ['📜','scroll-text'], ['🔴','circle'], ['🟡','circle'], ['🟢','circle'], ['🟣','circle'],
+    ['😕','circle-help'], ['💽','hard-drive'], ['🗄','archive'], ['🧹','sparkles'], ['🏢','building-2'],
+    ['🏷','tags'], ['📄','file-text'], ['🔒','lock-keyhole'], ['🏆','trophy'], ['🍔','sandwich']
+  ]);
+  function atualizarIconesLegados(root=document.body) {
+    if (!window.lucide || !root) return;
+    const nodes = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent || ['SCRIPT','STYLE','TEXTAREA','OPTION'].includes(parent.tagName) || parent.closest('svg')) return NodeFilter.FILTER_REJECT;
+        return [...legacyIconMap.keys()].some(icon => node.nodeValue.includes(icon)) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node => {
+      let restante = node.nodeValue;
+      const fragment = document.createDocumentFragment();
+      while (restante) {
+        let indice = -1, simbolo = null, nome = null;
+        legacyIconMap.forEach((iconName, icon) => {
+          const pos = restante.indexOf(icon);
+          if (pos >= 0 && (indice < 0 || pos < indice || (pos === indice && icon.length > simbolo.length))) { indice = pos; simbolo = icon; nome = iconName; }
+        });
+        if (indice < 0) { fragment.append(document.createTextNode(restante)); break; }
+        if (indice > 0) fragment.append(document.createTextNode(restante.slice(0, indice)));
+        const wrapper = document.createElement('span');
+        wrapper.className = 'legacy-icon';
+        wrapper.setAttribute('aria-hidden', 'true');
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', nome);
+        wrapper.append(icon);
+        fragment.append(wrapper);
+        restante = restante.slice(indice + simbolo.length);
+      }
+      node.replaceWith(fragment);
+    });
+    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(field => {
+      let placeholder = field.getAttribute('placeholder') || '';
+      legacyIconMap.forEach((_name, icon) => { placeholder = placeholder.replaceAll(icon, ''); });
+      field.setAttribute('placeholder', placeholder.trim());
+    });
+    window.lucide.createIcons({attrs:{'stroke-width':1.8}});
+  }
+  atualizarIconesLegados();
+  let iconUpdateTimer = null;
+  new MutationObserver(mutations => {
+    if (!mutations.some(mutation => mutation.addedNodes.length)) return;
+    clearTimeout(iconUpdateTimer);
+    iconUpdateTimer = setTimeout(() => atualizarIconesLegados(), 30);
+  }).observe(document.body, {childList:true, subtree:true});
 
   // Global fetch error handler
   const _origFetch = window.fetch;
   window.fetch = function(url, opts) {
+    opts = opts || {};
+    const method = String(opts.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      const headers = new Headers(opts.headers || {});
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+      if (csrf) headers.set('X-CSRF-Token', csrf);
+      opts.headers = headers;
+    }
     return _origFetch.call(this, url, opts).catch(function(err) {
       console.warn('[fetch] erro em', url, err);
       window.toast && window.toast('Erro de conexão: ' + (err.message || 'rede indisponível'), 'error');
@@ -446,6 +571,11 @@
       el2.style.cssText = 'background:#dc2626;color:#fff;top:2.5rem;';
       el2.textContent = '⚠ html5-qrcode não carregou. Leitor de código de barras indisponível.';
       document.body.prepend(el2);
+    }
+    if (typeof lucide === 'undefined') {
+      console.warn('Biblioteca de ícones não carregou; os textos permanecem disponíveis.');
+    } else {
+      lucide.createIcons({attrs:{'stroke-width':1.8}});
     }
   });
 </script>

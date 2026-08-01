@@ -48,13 +48,13 @@
       <tbody>
         {% for item in itens %}
         <tr>
-          <td class="col-qty">{{ item.quantidade }}</td>
+          <td class="col-qty">{{ item.quantidade|quantidade_br }}</td>
           <td class="col-desc">
             {{ item.produto_nome }}
             {% if item.observacao %}<div class="obs">{{ item.observacao }}</div>{% endif %}
           </td>
-          <td class="col-unit">R$ {{ "%.2f"|format(item.preco_unitario) }}</td>
-          <td class="col-val">R$ {{ "%.2f"|format(item.subtotal) }}</td>
+          <td class="col-unit">{{ item.preco_unitario|moeda_brl }}</td>
+          <td class="col-val">{{ item.subtotal|moeda_brl }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -64,19 +64,19 @@
 
     <div class="totals">
       {% if desconto > 0 %}
-      <div class="row"><span>Desconto</span><span>- R$ {{ "%.2f"|format(desconto) }}</span></div>
+      <div class="row"><span>Desconto</span><span>- {{ desconto|moeda_brl }}</span></div>
       {% endif %}
       {% if acrescimo > 0 %}
-      <div class="row"><span>Acréscimo</span><span>+ R$ {{ "%.2f"|format(acrescimo) }}</span></div>
+      <div class="row"><span>Acréscimo</span><span>+ {{ acrescimo|moeda_brl }}</span></div>
       {% endif %}
       <div class="row total-final">
         <span>TOTAL</span>
-        <span>R$ {{ "%.2f"|format(total) }}</span>
+        <span>{{ total|moeda_brl }}</span>
       </div>
       {% if valor_recebido %}
-      <div class="row"><span>Recebido</span><span>R$ {{ "%.2f"|format(valor_recebido) }}</span></div>
+      <div class="row"><span>Recebido</span><span>{{ valor_recebido|moeda_brl }}</span></div>
       {% if troco is defined and troco > 0 %}
-      <div class="row"><span>Troco</span><span>R$ {{ "%.2f"|format(troco) }}</span></div>
+      <div class="row"><span>Troco</span><span>{{ troco|moeda_brl }}</span></div>
       {% endif %}
       {% endif %}
     </div>
@@ -87,8 +87,6 @@
     </div>
   </div>
 
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
+  <script src="{{ url_for('static', filename='js/print-helper.js') }}"></script>
 </body>
 </html>

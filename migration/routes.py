@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from flask import render_template, request, jsonify, redirect, url_for, session
-from auth import admin_required
+from auth import permission_required
 from database import get_db
 from migration.validators import validar_upload_completo
 from migration.services import (
@@ -19,19 +19,19 @@ from migration.backup import criar_backup
 def register_wizard_routes(app):
 
     @app.route("/migracao")
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_index():
         limpar_uploads_antigos()
         return redirect(url_for("migracao_etapa1"))
 
     @app.route("/migracao/etapa1")
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_etapa1():
         limpar_sessao_migracao()
         return render_template("migracao_etapa1.html")
 
     @app.route("/migracao/etapa2", methods=["GET", "POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_etapa2():
         if request.method == "GET":
             tipo = request.args.get("tipo")
@@ -75,7 +75,7 @@ def register_wizard_routes(app):
         })
 
     @app.route("/api/migracao/analisar", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_analisar():
         dados = obter_sessao_migracao()
         if not dados.get("arquivo"):
@@ -104,7 +104,7 @@ def register_wizard_routes(app):
         return resp
 
     @app.route("/migracao/etapa3")
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_etapa3():
         dados = obter_sessao_migracao()
         if not dados.get("arquivo"):
@@ -116,7 +116,7 @@ def register_wizard_routes(app):
         return render_template("migracao_etapa3.html", dados=dados, analise=analise, compat=compat)
 
     @app.route("/migracao/etapa4")
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_etapa4():
         dados = obter_sessao_migracao()
         if not dados.get("arquivo"):
@@ -126,7 +126,7 @@ def register_wizard_routes(app):
         return render_template("migracao_etapa4.html", dados=dados, compat=compat, pode_importar=pode_importar)
 
     @app.route("/api/migracao/upload", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_upload():
         file = request.files.get("arquivo")
         if not file or not file.filename:
@@ -158,7 +158,7 @@ def register_wizard_routes(app):
         })
 
     @app.route("/api/migracao/confirmar", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_confirmar():
         dados = obter_sessao_migracao()
         if not dados.get("arquivo"):
@@ -182,13 +182,13 @@ def register_wizard_routes(app):
         return jsonify(resultado)
 
     @app.route("/api/migracao/cancelar", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_cancelar():
         limpar_sessao_migracao()
         return jsonify({"ok": True})
 
     @app.route("/api/migracao/compatibilidade")
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_compatibilidade():
         dados = obter_sessao_migracao()
         if not dados.get("compatibilidade"):
@@ -196,7 +196,7 @@ def register_wizard_routes(app):
         return jsonify(dados["compatibilidade"])
 
     @app.route("/migracao/relatorio/json")
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_relatorio_json():
         dados = obter_sessao_migracao()
         compat = dados.get("compatibilidade")
@@ -211,7 +211,7 @@ def register_wizard_routes(app):
         )
 
     @app.route("/migracao/relatorio/html")
-    @admin_required
+    @permission_required("migracao.acessar")
     def migracao_relatorio_html():
         dados = obter_sessao_migracao()
         compat = dados.get("compatibilidade")

@@ -1,48 +1,137 @@
 {% extends 'base.html' %}
 {% block title %}Estoque{% endblock %}
-{% block page_title %}📋 Controle de Estoque{% endblock %}
+{% block page_title %}<span class="page-title-with-icon"><i data-lucide="clipboard-list" aria-hidden="true"></i>Controle de Estoque</span>{% endblock %}
 {% block content %}
-<div class="grid md:grid-cols-3 gap-4 mb-4">
-  <div class="card"><div class="text-xs text-slate-400 uppercase">Produtos Ativos</div><div id="k-total" class="text-2xl font-bold">0</div></div>
-  <div class="card"><div class="text-xs text-slate-400 uppercase">Estoque Crítico</div><div id="k-crit" class="text-2xl font-bold text-yellow-400">0</div></div>
-  <div class="card"><div class="text-xs text-slate-400 uppercase">Zerados</div><div id="k-zero" class="text-2xl font-bold text-red-400">0</div></div>
-</div>
+<div class="stock-dashboard">
+  <section class="stock-summary-grid" aria-label="Resumo do estoque">
+    <button type="button" class="stock-stat stock-stat-neutral" data-stock-filter="todos" onclick="aplicarFiltro('todos', this)">
+      <span class="stock-stat-icon"><i data-lucide="package-check" aria-hidden="true"></i></span>
+      <span class="stock-stat-copy"><small>Produtos ativos</small><strong id="k-total">0</strong><span>Todo o catálogo</span></span>
+    </button>
+    <button type="button" class="stock-stat stock-stat-danger" data-stock-filter="atencao" onclick="aplicarFiltro('atencao', this)">
+      <span class="stock-stat-icon"><i data-lucide="siren" aria-hidden="true"></i></span>
+      <span class="stock-stat-copy"><small>Atenção agora</small><strong id="k-attention">0</strong><span>3 níveis de alerta</span></span>
+    </button>
+    <button type="button" class="stock-stat stock-stat-zero" data-stock-filter="zerados" onclick="aplicarFiltro('zerados', this)">
+      <span class="stock-stat-icon"><i data-lucide="package-x" aria-hidden="true"></i></span>
+      <span class="stock-stat-copy"><small>Sem estoque</small><strong id="k-zero">0</strong><span>Saldo exatamente zero</span></span>
+    </button>
+    <button type="button" class="stock-stat stock-stat-negative" data-stock-filter="negativos" onclick="aplicarFiltro('negativos', this)">
+      <span class="stock-stat-icon"><i data-lucide="circle-minus" aria-hidden="true"></i></span>
+      <span class="stock-stat-copy"><small>Saldo negativo</small><strong id="k-negative">0</strong><span>Exigem conferência</span></span>
+    </button>
+    <button type="button" class="stock-stat stock-stat-success" data-stock-filter="ok" onclick="aplicarFiltro('ok', this)">
+      <span class="stock-stat-icon"><i data-lucide="circle-check-big" aria-hidden="true"></i></span>
+      <span class="stock-stat-copy"><small>Estoque em dia</small><strong id="k-ok">0</strong><span>Acima do mínimo</span></span>
+    </button>
+  </section>
 
-<div class="flex gap-2 mb-4">
-  {% if session.get('usuario_nivel') == 'admin' %}
-  <button onclick="abrirMov('entrada')" class="btn btn-success">+ Entrada</button>
-  <button onclick="abrirMov('saida')" class="btn btn-danger">- Saída</button>
-  {% endif %}
-  <button onclick="listarMov()" class="btn btn-secondary">🔄 Movimentações</button>
-  <button onclick="window.open('/imprimir/relatorio/estoque','_blank')" class="btn btn-primary ml-auto">🖨 Imprimir</button>
-</div>
+  <section class="stock-priority-panel" aria-live="polite">
+    <div class="stock-priority-main">
+      <span class="stock-priority-icon"><i data-lucide="scan-search" aria-hidden="true"></i></span>
+      <div class="stock-priority-copy">
+        <span class="eyebrow">Prioridade do estoque</span>
+        <h2 id="stock-priority-title">Analisando os produtos...</h2>
+        <p id="stock-priority-detail">Aguarde enquanto preparamos o resumo.</p>
+      </div>
+    </div>
+    <div class="stock-priority-side">
+      <div class="stock-health-head"><span>Saúde do estoque</span><strong id="stock-health-percent">0%</strong></div>
+      <div class="stock-health-bar" aria-hidden="true">
+        <span id="health-ok" class="stock-health-segment stock-health-ok"></span>
+        <span id="health-critical" class="stock-health-segment stock-health-critical"></span>
+        <span id="health-zero" class="stock-health-segment stock-health-zero"></span>
+        <span id="health-negative" class="stock-health-segment stock-health-negative"></span>
+      </div>
+      <button type="button" class="stock-review-btn" onclick="aplicarFiltro('atencao', this)">
+        Revisar prioridades <i data-lucide="arrow-right" aria-hidden="true"></i>
+      </button>
+    </div>
+  </section>
 
-<div class="card overflow-auto mb-4">
-  <h3 class="font-semibold mb-3">Estoque Atual</h3>
-  <table class="table">
-    <thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Preço</th><th>Status</th></tr></thead>
-    <tbody id="lista"></tbody>
-  </table>
-</div>
+  <div class="stock-action-bar">
+    <div class="stock-primary-actions">
+      {% if pode('estoque.movimentar') %}
+      <button type="button" onclick="abrirMov('entrada')" class="btn btn-success"><i data-lucide="package-plus" aria-hidden="true"></i>Entrada</button>
+      <button type="button" onclick="abrirMov('saida')" class="btn btn-danger"><i data-lucide="package-minus" aria-hidden="true"></i>Saída</button>
+      {% endif %}
+      <button type="button" onclick="listarMov()" class="btn btn-secondary"><i data-lucide="history" aria-hidden="true"></i>Movimentações</button>
+    </div>
+    {% if pode('relatorios.visualizar') and pode('financeiro.visualizar') and pode('impressao.imprimir') %}
+    <button type="button" onclick="window.open('/imprimir/relatorio/estoque','_blank')" class="btn btn-primary"><i data-lucide="printer" aria-hidden="true"></i>Imprimir</button>
+    {% endif %}
+  </div>
 
-<div class="card overflow-auto" id="box-mov" style="display:none">
-  <h3 class="font-semibold mb-3">Últimas Movimentações</h3>
-  <table class="table">
-    <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd</th><th>Motivo</th><th>Usuário</th></tr></thead>
-    <tbody id="lista-mov"></tbody>
-  </table>
+  <section id="stock-table-panel" class="card stock-table-card">
+    <div class="stock-table-heading">
+      <div>
+        <span class="eyebrow">Visão operacional</span>
+        <h2 id="stock-list-title">Produtos que precisam de atenção</h2>
+        <p id="stock-result-count">Carregando estoque...</p>
+      </div>
+      <label class="stock-search">
+        <i data-lucide="search" aria-hidden="true"></i>
+        <input id="stock-search-input" type="search" placeholder="Buscar produto, categoria ou código" autocomplete="off" aria-label="Buscar no estoque">
+      </label>
+    </div>
+
+    <div class="stock-filter-area" aria-label="Filtros do estoque">
+      <div class="stock-filter-chips" role="group" aria-label="Filtrar por situação">
+        <button type="button" class="stock-filter-chip" data-stock-filter="todos" onclick="aplicarFiltro('todos', this)">Todos <span id="fc-all">0</span></button>
+        <button type="button" class="stock-filter-chip is-active" data-stock-filter="atencao" onclick="aplicarFiltro('atencao', this)">Precisa repor <span id="fc-attention">0</span></button>
+        <button type="button" class="stock-filter-chip" data-stock-filter="zerados" onclick="aplicarFiltro('zerados', this)">Zerados <span id="fc-zero">0</span></button>
+        <button type="button" class="stock-filter-chip" data-stock-filter="negativos" onclick="aplicarFiltro('negativos', this)">Negativos <span id="fc-negative">0</span></button>
+        <button type="button" class="stock-filter-chip" data-stock-filter="criticos" onclick="aplicarFiltro('criticos', this)">Abaixo do mínimo <span id="fc-critical">0</span></button>
+        <button type="button" class="stock-filter-chip" data-stock-filter="ok" onclick="aplicarFiltro('ok', this)">Em dia <span id="fc-ok">0</span></button>
+      </div>
+      <label class="stock-category-filter">
+        <span>Categoria</span>
+        <select id="stock-category-select" aria-label="Filtrar estoque por categoria">
+          <option value="">Todas as categorias</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="stock-minimum-note" class="stock-minimum-note hidden">
+      <i data-lucide="settings-2" aria-hidden="true"></i>
+      <span id="stock-minimum-text"></span>
+      {% if pode('produtos.alterar') %}<a href="{{ url_for('produtos') }}">Configurar nos produtos <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+    </div>
+
+    <div class="stock-table-scroll">
+      <table class="table stock-table">
+        <thead>
+          <tr><th>Produto</th><th>Categoria</th><th>Estoque atual</th><th>Mínimo</th><th>Preço</th><th>Status</th>{% if pode('estoque.movimentar') %}<th><span class="sr-only">Ação</span></th>{% endif %}</tr>
+        </thead>
+        <tbody id="lista"><tr><td colspan="7"><div class="stock-loading"><i data-lucide="loader-circle" aria-hidden="true"></i>Carregando produtos...</div></td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card stock-movements-card" id="box-mov" style="display:none">
+    <div class="stock-table-heading">
+      <div><span class="eyebrow">Últimos registros</span><h2>Movimentações recentes</h2><p>Entradas e saídas registradas no estoque.</p></div>
+      <button type="button" class="icon-btn" onclick="fecharMovimentacoes()" aria-label="Fechar movimentações"><i data-lucide="x" aria-hidden="true"></i></button>
+    </div>
+    <div class="stock-table-scroll">
+      <table class="table">
+        <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th><th>Motivo</th><th>Usuário</th></tr></thead>
+        <tbody id="lista-mov"></tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
 <div id="modal" class="hidden modal-bg">
   <div class="modal-box">
     <div class="p-4 border-b border-ink-700 flex items-center justify-between">
       <h3 id="modal-titulo" class="font-bold text-lg">Movimentação</h3>
-      <button onclick="fecharModal()" class="text-slate-400">✕</button>
+      <button type="button" onclick="fecharModal()" class="icon-btn" aria-label="Fechar movimentação"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <form id="form" class="p-4 space-y-3" onsubmit="salvar(event)">
       <input type="hidden" id="tipo">
       <div><label class="text-sm">Produto</label><select id="produto" required class="w-full px-3 py-2 rounded"></select></div>
-      <div><label class="text-sm">Quantidade</label><input id="qtd" type="number" step="0.01" required class="w-full px-3 py-2 rounded"></div>
+      <div><label class="text-sm">Quantidade</label><input id="qtd" type="number" step="0.01" min="0.01" required class="w-full px-3 py-2 rounded"></div>
       <div id="box-motivo"><label class="text-sm">Motivo</label>
         <select id="motivo" class="w-full px-3 py-2 rounded">
           <option>Venda</option><option>Perda</option><option>Quebra</option><option>Consumo interno</option><option>Ajuste</option>
@@ -56,57 +145,244 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
+const canMoveStock = {{ 'true' if pode('estoque.movimentar') else 'false' }};
+let estoqueProdutos = [];
+let filtroStatus = 'atencao';
+let filtroCategoria = '';
+let termoEstoque = '';
+
+function normalizarEstoque(valor) {
+  return String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function estadoProduto(produto) {
+  const estoque = Number(produto.estoque) || 0;
+  const minimo = Number(produto.estoque_minimo) || 0;
+  if (estoque < 0) return 'negativo';
+  if (estoque === 0) return 'zerado';
+  if (estoque <= minimo) return 'critico';
+  return 'ok';
+}
+
+function formatarQuantidade(valor) {
+  const numero = Number(valor) || 0;
+  return numero.toLocaleString('pt-BR', {minimumFractionDigits: Number.isInteger(numero) ? 0 : 1, maximumFractionDigits: 2});
+}
+
+function contagensEstoque() {
+  const resumo = {todos: estoqueProdutos.length, atencao: 0, zerado: 0, negativo: 0, critico: 0, ok: 0, semMinimo: 0};
+  estoqueProdutos.forEach(produto => {
+    const estado = estadoProduto(produto);
+    resumo[estado] += 1;
+    if (estado !== 'ok') resumo.atencao += 1;
+    if ((Number(produto.estoque_minimo) || 0) <= 0) resumo.semMinimo += 1;
+  });
+  return resumo;
+}
+
+function preencherResumo() {
+  const resumo = contagensEstoque();
+  const definir = (id, valor) => { const el = document.getElementById(id); if (el) el.textContent = valor; };
+  definir('k-total', resumo.todos);
+  definir('k-attention', resumo.atencao);
+  definir('k-zero', resumo.zerado);
+  definir('k-negative', resumo.negativo);
+  definir('k-ok', resumo.ok);
+  definir('fc-all', resumo.todos);
+  definir('fc-attention', resumo.atencao);
+  definir('fc-zero', resumo.zerado);
+  definir('fc-negative', resumo.negativo);
+  definir('fc-critical', resumo.critico);
+  definir('fc-ok', resumo.ok);
+
+  const percentualOk = resumo.todos ? Math.round((resumo.ok / resumo.todos) * 100) : 0;
+  definir('stock-health-percent', `${percentualOk}% em dia`);
+  const larguras = {
+    'health-ok': resumo.ok,
+    'health-critical': resumo.critico,
+    'health-zero': resumo.zerado,
+    'health-negative': resumo.negativo
+  };
+  Object.entries(larguras).forEach(([id, quantidade]) => {
+    document.getElementById(id).style.width = `${resumo.todos ? (quantidade / resumo.todos) * 100 : 0}%`;
+  });
+
+  const titulo = document.getElementById('stock-priority-title');
+  const detalhe = document.getElementById('stock-priority-detail');
+  if (resumo.atencao > 0) {
+    titulo.textContent = `${resumo.atencao} produtos precisam de atenção`;
+    const partes = [`${resumo.zerado} sem estoque`, `${resumo.negativo} com saldo negativo`];
+    if (resumo.critico) partes.push(`${resumo.critico} abaixo do mínimo`);
+    detalhe.textContent = `${partes.join(' • ')}. Os itens mais urgentes aparecem primeiro.`;
+  } else {
+    titulo.textContent = 'Estoque em dia';
+    detalhe.textContent = 'Nenhum produto precisa de reposição neste momento.';
+  }
+
+  const nota = document.getElementById('stock-minimum-note');
+  if (resumo.semMinimo > 0) {
+    document.getElementById('stock-minimum-text').textContent = `${resumo.semMinimo} produtos estão sem estoque mínimo definido. Configure esse valor para receber alertas antes de o produto acabar.`;
+    nota.classList.remove('hidden');
+  } else {
+    nota.classList.add('hidden');
+  }
+}
+
+function preencherCategorias() {
+  const select = document.getElementById('stock-category-select');
+  const categorias = [...new Set(estoqueProdutos.map(p => p.categoria || 'Sem categoria'))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  select.innerHTML = '<option value="">Todas as categorias</option>' + categorias.map(categoria =>
+    `<option value="${escapeHtml(categoria)}">${escapeHtml(categoria)}</option>`
+  ).join('');
+}
+
+function correspondeAoFiltro(produto) {
+  const estado = estadoProduto(produto);
+  const statusOk = filtroStatus === 'todos' ||
+    (filtroStatus === 'atencao' && estado !== 'ok') ||
+    (filtroStatus === 'zerados' && estado === 'zerado') ||
+    (filtroStatus === 'negativos' && estado === 'negativo') ||
+    (filtroStatus === 'criticos' && estado === 'critico') ||
+    (filtroStatus === 'ok' && estado === 'ok');
+  const categoria = produto.categoria || 'Sem categoria';
+  const categoriaOk = !filtroCategoria || categoria === filtroCategoria;
+  const buscaOk = !termoEstoque || normalizarEstoque(`${produto.nome} ${categoria} ${produto.codigo_barras || ''}`).includes(termoEstoque);
+  return statusOk && categoriaOk && buscaOk;
+}
+
+function prioridadeProduto(produto) {
+  return {negativo: 0, zerado: 1, critico: 2, ok: 3}[estadoProduto(produto)];
+}
+
+function statusProdutoHtml(produto) {
+  const estado = estadoProduto(produto);
+  if (estado === 'negativo') return '<span class="stock-status stock-status-negative"><i data-lucide="circle-minus" aria-hidden="true"></i>Saldo negativo</span>';
+  if (estado === 'zerado') return '<span class="stock-status stock-status-zero"><i data-lucide="package-x" aria-hidden="true"></i>Sem estoque</span>';
+  if (estado === 'critico') return '<span class="stock-status stock-status-critical"><i data-lucide="triangle-alert" aria-hidden="true"></i>Abaixo do mínimo</span>';
+  return '<span class="stock-status stock-status-ok"><i data-lucide="circle-check" aria-hidden="true"></i>Em dia</span>';
+}
+
+function detalheQuantidade(produto) {
+  const estado = estadoProduto(produto);
+  if (estado === 'negativo') return 'Conferir e corrigir';
+  if (estado === 'zerado') return 'Reposição necessária';
+  if (estado === 'critico') {
+    const falta = Math.max(0, (Number(produto.estoque_minimo) || 0) - (Number(produto.estoque) || 0));
+    return `Faltam ${formatarQuantidade(falta)} para o mínimo`;
+  }
+  return 'Disponível';
+}
+
+function renderizarTabela() {
+  const titulos = {
+    todos: 'Estoque atual', atencao: 'Produtos que precisam de atenção', zerados: 'Produtos sem estoque',
+    negativos: 'Produtos com saldo negativo', criticos: 'Produtos abaixo do mínimo', ok: 'Produtos com estoque em dia'
+  };
+  document.getElementById('stock-list-title').textContent = titulos[filtroStatus];
+  document.querySelectorAll('[data-stock-filter]').forEach(botao => {
+    const ativo = botao.dataset.stockFilter === filtroStatus;
+    botao.classList.toggle('is-active', ativo);
+    botao.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+  });
+
+  const lista = estoqueProdutos.filter(correspondeAoFiltro).sort((a, b) => {
+    const prioridade = prioridadeProduto(a) - prioridadeProduto(b);
+    if (prioridade) return prioridade;
+    const saldo = Number(a.estoque) - Number(b.estoque);
+    return saldo || a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+
+  const quantidadeTexto = `${lista.length} ${lista.length === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
+  document.getElementById('stock-result-count').textContent = quantidadeTexto;
+  const tbody = document.getElementById('lista');
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="stock-empty"><i data-lucide="search-x" aria-hidden="true"></i><strong>Nenhum produto encontrado</strong><span>Tente outro filtro, categoria ou termo de busca.</span></div></td></tr>`;
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
+  tbody.innerHTML = lista.map(produto => {
+    const estado = estadoProduto(produto);
+    const codigo = produto.codigo_barras ? `<small>Cód. ${escapeHtml(produto.codigo_barras)}</small>` : '<small>Sem código de barras</small>';
+    return `
+      <tr class="stock-row stock-row-${estado}">
+        <td><div class="stock-product-cell"><span class="stock-product-dot" aria-hidden="true"></span><div><strong>${escapeHtml(produto.nome)}</strong>${codigo}</div></div></td>
+        <td><span class="stock-category">${escapeHtml(produto.categoria || 'Sem categoria')}</span></td>
+        <td><div class="stock-quantity stock-quantity-${estado}"><strong>${formatarQuantidade(produto.estoque)} ${escapeHtml(produto.unidade || 'UN')}</strong><small>${detalheQuantidade(produto)}</small></div></td>
+        <td>${formatarQuantidade(produto.estoque_minimo)}</td>
+        <td class="stock-price">${fmtMoeda(produto.preco)}</td>
+        <td>${statusProdutoHtml(produto)}</td>
+        {% if pode('estoque.movimentar') %}<td class="stock-row-action-cell"><button type="button" class="stock-row-action" onclick="abrirMov('entrada', ${Number(produto.id)})" title="Registrar entrada" aria-label="Registrar entrada para ${escapeHtml(produto.nome)}"><i data-lucide="plus" aria-hidden="true"></i></button></td>{% endif %}
+      </tr>`;
+  }).join('');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function aplicarFiltro(filtro, origem = null) {
+  filtroStatus = filtro;
+  renderizarTabela();
+  if (origem) document.getElementById('stock-table-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
 async function listar() {
-  const r = await fetch('/api/estoque');
-  const lista = await r.json();
-  document.getElementById('k-total').textContent = lista.length;
-  document.getElementById('k-crit').textContent = lista.filter(p => p.critico && !p.zerado).length;
-  document.getElementById('k-zero').textContent = lista.filter(p => p.zerado).length;
-  document.getElementById('lista').innerHTML = lista.map(p => `
-    <tr>
-      <td class="font-medium">${p.nome}</td>
-      <td>${p.categoria||'—'}</td>
-      <td><span class="${p.zerado?'text-red-400 font-bold':p.critico?'text-yellow-400 font-bold':'text-green-400'}">${p.estoque} ${p.unidade}</span></td>
-      <td>${p.estoque_minimo}</td>
-      <td class="text-brand-500">${fmtMoeda(p.preco)}</td>
-      <td>${p.zerado?'<span class="badge badge-red">🚨 Zerado</span>':p.critico?'<span class="badge badge-yellow">⚠ Crítico</span>':'<span class="badge badge-green">OK</span>'}</td>
-    </tr>
-  `).join('');
+  try {
+    const resposta = await fetch('/api/estoque');
+    if (!resposta.ok) throw new Error('Falha ao carregar o estoque');
+    estoqueProdutos = await resposta.json();
+    preencherResumo();
+    preencherCategorias();
+    renderizarTabela();
+    if (window.lucide) window.lucide.createIcons();
+  } catch (erro) {
+    document.getElementById('stock-result-count').textContent = 'Não foi possível carregar os produtos.';
+    document.getElementById('lista').innerHTML = '<tr><td colspan="7"><div class="stock-empty stock-empty-error"><i data-lucide="wifi-off" aria-hidden="true"></i><strong>Falha ao carregar o estoque</strong><span>Verifique a conexão e tente novamente.</span><button type="button" class="btn btn-secondary" onclick="listar()">Tentar novamente</button></div></td></tr>';
+    if (window.lucide) window.lucide.createIcons();
+  }
 }
 
 async function listarMov() {
-  const r = await fetch('/api/movimentacoes');
-  const lista = await r.json();
-  document.getElementById('box-mov').style.display = 'block';
-  document.getElementById('lista-mov').innerHTML = lista.map(m => `
+  const resposta = await fetch('/api/movimentacoes');
+  const lista = await resposta.json();
+  const box = document.getElementById('box-mov');
+  box.style.display = 'block';
+  document.getElementById('lista-mov').innerHTML = lista.length ? lista.map(movimento => `
     <tr>
-      <td class="text-xs">${fmtData(m.data_hora)}</td>
-      <td>${m.produto}</td>
-      <td>${m.tipo==='entrada'?'<span class="badge badge-green">+ Entrada</span>':'<span class="badge badge-red">- Saída</span>'}</td>
-      <td>${m.quantidade}</td>
-      <td>${m.motivo||'—'}</td>
-      <td>${m.usuario||'—'}</td>
-    </tr>
-  `).join('');
+      <td class="text-xs">${fmtData(movimento.data_hora)}</td>
+      <td>${escapeHtml(movimento.produto)}</td>
+      <td>${movimento.tipo === 'entrada' ? '<span class="badge badge-green">+ Entrada</span>' : '<span class="badge badge-red">− Saída</span>'}</td>
+      <td>${formatarQuantidade(movimento.quantidade)}</td>
+      <td>${escapeHtml(movimento.motivo || '—')}</td>
+      <td>${escapeHtml(movimento.usuario || '—')}</td>
+    </tr>`).join('') : '<tr><td colspan="6"><div class="empty-inline">Nenhuma movimentação registrada.</div></td></tr>';
+  box.scrollIntoView({behavior: 'smooth', block: 'start'});
+  if (window.lucide) window.lucide.createIcons();
 }
 
-async function abrirMov(tipo) {
+function fecharMovimentacoes() {
+  document.getElementById('box-mov').style.display = 'none';
+}
+
+async function abrirMov(tipo, produtoId = null) {
+  if (!canMoveStock) return;
   document.getElementById('tipo').value = tipo;
   document.getElementById('modal-titulo').textContent = tipo === 'entrada' ? 'Entrada de Estoque' : 'Saída de Estoque';
   document.getElementById('box-motivo').style.display = tipo === 'saida' ? 'block' : 'none';
   document.getElementById('box-obs').style.display = tipo === 'entrada' ? 'block' : 'none';
   document.getElementById('motivo').value = tipo === 'saida' ? 'Ajuste' : 'Compra';
-  const r = await fetch('/api/produtos');
-  const lista = await r.json();
-  document.getElementById('produto').innerHTML = lista.map(p => `<option value="${p.id}">${p.nome} (${p.estoque} ${p.unidade})</option>`).join('');
+  const resposta = await fetch('/api/produtos');
+  const lista = await resposta.json();
+  const select = document.getElementById('produto');
+  select.innerHTML = lista.map(produto => `<option value="${produto.id}">${escapeHtml(produto.nome)} (${formatarQuantidade(produto.estoque)} ${escapeHtml(produto.unidade || 'UN')})</option>`).join('');
+  if (produtoId !== null) select.value = String(produtoId);
   document.getElementById('qtd').value = '';
   document.getElementById('obs').value = '';
   document.getElementById('modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('qtd').focus(), 50);
 }
 
-async function salvar(e) {
-  e.preventDefault();
+async function salvar(evento) {
+  evento.preventDefault();
   const tipo = document.getElementById('tipo').value;
   const dados = {
     produto_id: parseInt(document.getElementById('produto').value),
@@ -114,12 +390,31 @@ async function salvar(e) {
   };
   if (tipo === 'saida') dados.motivo = document.getElementById('motivo').value;
   else dados.observacao = document.getElementById('obs').value;
-  const r = await fetch('/api/estoque/' + tipo, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
-  const d = await r.json();
-  if (d.ok) { toast('Movimentação registrada!'); fecharModal(); listar(); } else toast(d.erro || 'Erro', 'error');
+  const resposta = await fetch('/api/estoque/' + tipo, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados)});
+  const resultado = await resposta.json();
+  if (resultado.ok) {
+    toast('Movimentação registrada!');
+    fecharModal();
+    await listar();
+    if (document.getElementById('box-mov').style.display !== 'none') await listarMov();
+  } else {
+    toast(resultado.erro || 'Erro ao registrar movimentação', 'error');
+  }
 }
 
-function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
+function fecharModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+document.getElementById('stock-search-input').addEventListener('input', evento => {
+  termoEstoque = normalizarEstoque(evento.target.value);
+  renderizarTabela();
+});
+document.getElementById('stock-category-select').addEventListener('change', evento => {
+  filtroCategoria = evento.target.value;
+  renderizarTabela();
+});
+
 listar();
 </script>
 {% endblock %}

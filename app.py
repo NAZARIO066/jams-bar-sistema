@@ -1,10 +1,13 @@
 import os
 import logging
-from flask import Flask, render_template, session
+import secrets
+import hmac
+from flask import Flask, render_template, session, request, jsonify
 from datetime import datetime, date
 from config import Config
 from database import get_db, init_db, close_db
 from auth import log_auditoria
+from permissions import has_permission, init_access_control
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -26,6 +29,27 @@ from routes.pagamento_routes import register_pagamento_routes
 app = Flask(__name__)
 app.config.from_object(Config)
 app.teardown_appcontext(close_db)
+
+
+@app.template_filter("moeda_brl")
+def moeda_brl(valor):
+    try:
+        numero = float(valor or 0)
+    except (TypeError, ValueError):
+        numero = 0
+    formatado = f"{numero:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"R$ {formatado}"
+
+
+@app.template_filter("quantidade_br")
+def quantidade_br(valor):
+    try:
+        numero = float(valor or 0)
+    except (TypeError, ValueError):
+        return str(valor or 0)
+    if numero.is_integer():
+        return str(int(numero))
+    return f"{numero:.3f}".rstrip("0").rstrip(".").replace(".", ",")
 
 register_auth_routes(app)
 register_dashboard_routes(app)
@@ -50,18 +74,31 @@ def set_security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
     return response
 
 
 # =================== INICIALIZAÇÃO ===================
 
-_db_ready = False
+_db_ready_path = None
+
+@app.before_request
+def protect_csrf():
+    session.setdefault("_csrf_token", secrets.token_hex(24))
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+    if request.endpoint in {"login", "alterar_senha"} or "usuario_id" not in session:
+        return None
+    token = request.headers.get("X-CSRF-Token", "")
+    expected = session.get("_csrf_token", "")
+    if not token or not expected or not hmac.compare_digest(token, expected):
+        return jsonify({"ok": False, "erro": "Token de segurança inválido. Atualize a página e tente novamente."}), 400
 
 @app.before_request
 def ensure_db():
-    global _db_ready
-    if _db_ready:
+    global _db_ready_path
+    database_path = os.path.abspath(app.config["DATABASE"])
+    if _db_ready_path == database_path:
         return
     if not os.path.exists(app.config["DATABASE"]):
         with app.app_context():
@@ -200,7 +237,12 @@ def ensure_db():
             db.commit()
         except Exception as e:
             logging.warning("Migração config_acesso_rapido: %s", e)
-    _db_ready = True
+    try:
+        init_access_control(get_db())
+    except Exception as e:
+        logging.exception("Migração de perfis e permissões: %s", e)
+        raise
+    _db_ready_path = database_path
 
 
 @app.context_processor
@@ -213,6 +255,8 @@ def inject_globals():
         "now": datetime.now,
         "hoje": date.today(),
         "logo_timestamp": logo_timestamp,
+        "usuario_perfil": session.get("usuario_perfil") or ("Administrador" if session.get("usuario_nivel") == "admin" else "Funcionário"),
+        "pode": has_permission,
     }
 
 
@@ -220,7 +264,8 @@ def inject_globals():
 
 @app.errorhandler(403)
 def erro_403(e):
-    return render_template("erro.html", codigo=403, mensagem="Acesso negado. Apenas administradores."), 403
+    mensagem = getattr(e, "description", None) or "Acesso não autorizado."
+    return render_template("erro.html", codigo=403, mensagem=mensagem), 403
 
 
 @app.errorhandler(404)

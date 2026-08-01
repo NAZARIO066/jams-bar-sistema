@@ -6,6 +6,13 @@ from services.fiado_service import recalcular_saldo_devedor
 
 def processar_venda_direta(itens, desconto, forma_pagamento, usuario_id, cliente_id=None, dias_vencimento=30, acrescimo=0):
     db = get_db()
+    formas_validas = {"Dinheiro", "PIX", "Crédito", "Débito", "Fiado"}
+    if forma_pagamento not in formas_validas:
+        return {"ok": False, "erro": "Forma de pagamento inválida"}, 400
+    if acrescimo < 0:
+        return {"ok": False, "erro": "Acréscimo não pode ser negativo"}, 400
+    if dias_vencimento < 1 or dias_vencimento > 365:
+        return {"ok": False, "erro": "Prazo do fiado deve ficar entre 1 e 365 dias"}, 400
     total = 0
     linhas = []
     for it in itens:
@@ -13,6 +20,8 @@ def processar_venda_direta(itens, desconto, forma_pagamento, usuario_id, cliente
         if not p:
             return {"ok": False, "erro": f"Produto {it['produto_id']} inválido"}, 400
         q = float(it["quantidade"])
+        if q <= 0:
+            return {"ok": False, "erro": "Quantidade deve ser maior que zero"}, 400
         if p["estoque"] < q:
             return {"ok": False, "erro": f"Estoque insuficiente: {p['nome']}"}, 400
         sub = p["preco"] * q
@@ -67,7 +76,7 @@ def cancelar_venda(venda_id, usuario_id):
     if venda["forma_pagamento"] == "Fiado":
         fiado = db.execute("SELECT * FROM fiado WHERE venda_id=?", (venda_id,)).fetchone()
         if fiado:
-            db.execute("UPDATE fiado SET tipo='cancelado' WHERE venda_id=?", (venda_id,))
+            db.execute("DELETE FROM fiado WHERE venda_id=?", (venda_id,))
             recalcular_saldo_devedor(fiado["cliente_id"])
     db.commit()
     return {"ok": True, "mensagem": f"Venda #{venda_id} cancelada com sucesso"}, 200

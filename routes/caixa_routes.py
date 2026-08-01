@@ -1,18 +1,18 @@
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, admin_required, log_auditoria
+from auth import log_auditoria, permission_required
 from datetime import date
 
 
 def register_caixa_routes(app):
 
     @app.route("/caixa")
-    @login_required
+    @permission_required("caixa.acessar")
     def caixa():
         return render_template("caixa.html")
 
     @app.route("/api/caixa/status")
-    @login_required
+    @permission_required("caixa.acessar")
     def api_caixa_status():
         db = get_db()
         cx = db.execute("SELECT * FROM caixas WHERE usuario_id=? AND fechamento IS NULL ORDER BY id DESC LIMIT 1", (session["usuario_id"],)).fetchone()
@@ -29,7 +29,7 @@ def register_caixa_routes(app):
         })
 
     @app.route("/api/caixa/abrir", methods=["POST"])
-    @admin_required
+    @permission_required("caixa.movimentar")
     def api_caixa_abrir():
         db = get_db()
         aberto = db.execute("SELECT id FROM caixas WHERE usuario_id=? AND fechamento IS NULL", (session["usuario_id"],)).fetchone()
@@ -42,7 +42,7 @@ def register_caixa_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/caixa/fechar", methods=["POST"])
-    @admin_required
+    @permission_required("caixa.movimentar")
     def api_caixa_fechar():
         db = get_db()
         d = request.json or {}
@@ -64,7 +64,7 @@ def register_caixa_routes(app):
         return jsonify({"ok": True, "total": total["t"], "qtd": total["c"], "diferenca": diferenca, "esperado": valor_esperado, "valor_final": valor_final})
 
     @app.route("/api/caixa/suprimento", methods=["POST"])
-    @admin_required
+    @permission_required("caixa.movimentar")
     def api_caixa_suprimento():
         db = get_db()
         d = request.json or {}
@@ -83,7 +83,7 @@ def register_caixa_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/caixa/sangria", methods=["POST"])
-    @admin_required
+    @permission_required("caixa.movimentar")
     def api_caixa_sangria():
         db = get_db()
         d = request.json or {}
@@ -102,7 +102,7 @@ def register_caixa_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/caixa/movimentacoes")
-    @login_required
+    @permission_required("caixa.acessar")
     def api_caixa_movimentacoes():
         db = get_db()
         cx = db.execute("SELECT * FROM caixas WHERE usuario_id=? AND fechamento IS NULL ORDER BY id DESC LIMIT 1",

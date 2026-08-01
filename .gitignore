@@ -55,12 +55,20 @@ _filter_secrets.py
 
 # Backups locais de banco (gerados pelo sistema)
 static/uploads/backups/
+data/backups/
 
 # Uploads reais de usuários (não versionar dados reais)
 static/uploads/migration_tmp/
+data/migration_tmp/
 
 # Imagens de referência interna (não públicas)
 IMAGEM DO SISTEMA/
 PASTA DE TELAS/
 
 PARA INICIAR O DIA SEGUINTE .png
+
+# Bancos antigos e pastas de referência
+*.FDB
+*.fbk
+TELA CRIADO POR FERNANDO/
+

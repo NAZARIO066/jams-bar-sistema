@@ -3,13 +3,11 @@ import time
 import sqlite3
 import shutil
 from datetime import datetime
+from flask import current_app
 
 
 def _db_path():
-    return os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "bar_adega.db"
-    )
+    return current_app.config["DATABASE"]
 
 
 _DELETION_ORDER = [

@@ -1,10 +1,18 @@
 import os
+import sqlite3
 import time
+from datetime import datetime
 from datetime import date
 from flask import render_template, request, jsonify, session, send_file
 from werkzeug.security import generate_password_hash
 from database import get_db
-from auth import login_required, admin_required, log_auditoria
+from auth import (
+    any_permission_required, log_auditoria, permission_required,
+)
+from permissions import (
+    ALL_PERMISSION_KEYS, PERMISSION_DEFINITIONS, effective_permissions_for_user,
+    get_user_with_profile, has_permission, is_admin,
+)
 
 
 def register_admin_routes(app):
@@ -12,59 +20,202 @@ def register_admin_routes(app):
     # =================== USUÁRIOS ===================
 
     @app.route("/usuarios")
-    @admin_required
+    @any_permission_required("usuarios.criar", "permissoes.alterar")
     def usuarios():
         return render_template("usuarios.html")
 
     @app.route("/api/usuarios")
-    @admin_required
+    @any_permission_required("usuarios.criar", "permissoes.alterar")
     def api_usuarios_list():
         db = get_db()
-        rows = db.execute("SELECT id, nome, login, nivel, ativo, criado_em FROM usuarios ORDER BY nome").fetchall()
-        return jsonify([dict(r) for r in rows])
+        rows = db.execute(
+            """SELECT u.id, u.nome, u.login, u.nivel, u.ativo, u.bloqueado,
+                      u.exigir_troca_senha, u.ultimo_acesso, u.criado_em,
+                      u.perfil_id, p.nome AS perfil_nome
+               FROM usuarios u
+               LEFT JOIN perfis_acesso p ON p.id=u.perfil_id
+               ORDER BY u.nome"""
+        ).fetchall()
+        can_edit_permissions = has_permission("permissoes.alterar")
+        result = []
+        for row in rows:
+            user = dict(row)
+            user["permissoes"] = (
+                [p["chave"] for p in effective_permissions_for_user(row["id"], db) if p["permitido"]]
+                if can_edit_permissions else []
+            )
+            result.append(user)
+        return jsonify(result)
+
+    @app.route("/api/perfis-permissoes")
+    @any_permission_required("usuarios.criar", "permissoes.alterar")
+    def api_perfis_permissoes():
+        db = get_db()
+        profiles = db.execute(
+            "SELECT id, nome, descricao FROM perfis_acesso WHERE ativo=1 ORDER BY id"
+        ).fetchall()
+        profile_permissions = {}
+        for profile in profiles:
+            profile_permissions[str(profile["id"])] = [
+                row["permissao_chave"]
+                for row in db.execute(
+                    "SELECT permissao_chave FROM perfil_permissoes WHERE perfil_id=? ORDER BY permissao_chave",
+                    (profile["id"],),
+                ).fetchall()
+            ]
+        return jsonify({
+            "perfis": [dict(row) for row in profiles],
+            "permissoes": [
+                {"chave": key, "nome": name, "grupo": group, "descricao": description}
+                for key, name, group, description in PERMISSION_DEFINITIONS
+            ],
+            "padroes": profile_permissions,
+            "pode_personalizar": has_permission("permissoes.alterar"),
+        })
+
+    def _profile(db, profile_id):
+        try:
+            profile_id = int(profile_id)
+        except (TypeError, ValueError):
+            return None
+        return db.execute(
+            "SELECT id, nome FROM perfis_acesso WHERE id=? AND ativo=1", (profile_id,)
+        ).fetchone()
+
+    def _save_permission_overrides(db, user_id, profile_id, selected):
+        selected = set(selected or ()) & ALL_PERMISSION_KEYS
+        defaults = {
+            row["permissao_chave"]
+            for row in db.execute(
+                "SELECT permissao_chave FROM perfil_permissoes WHERE perfil_id=?",
+                (profile_id,),
+            ).fetchall()
+        }
+        db.execute("DELETE FROM usuario_permissoes WHERE usuario_id=?", (user_id,))
+        overrides = []
+        for key in sorted(ALL_PERMISSION_KEYS):
+            if (key in selected) != (key in defaults):
+                overrides.append((user_id, key, int(key in selected)))
+        if overrides:
+            db.executemany(
+                "INSERT INTO usuario_permissoes (usuario_id, permissao_chave, permitido) VALUES (?,?,?)",
+                overrides,
+            )
+
+    def _active_admin_count(db):
+        return db.execute(
+            """SELECT COUNT(*) AS total
+               FROM usuarios u LEFT JOIN perfis_acesso p ON p.id=u.perfil_id
+               WHERE u.ativo=1 AND u.bloqueado=0
+                 AND (u.nivel='admin' OR p.nome='Administrador')"""
+        ).fetchone()["total"]
 
     @app.route("/api/usuarios", methods=["POST"])
-    @admin_required
+    @permission_required("usuarios.criar")
     def api_usuario_create():
         db = get_db()
         d = request.json or {}
-        senha = d.get("senha")
-        if not senha:
-            return jsonify({"ok": False, "erro": "Senha é obrigatória"}), 400
+        nome = str(d.get("nome") or "").strip()
+        login = str(d.get("login") or "").strip()
+        senha = str(d.get("senha") or "")
+        profile = _profile(db, d.get("perfil_id"))
+        if not nome or not login:
+            return jsonify({"ok": False, "erro": "Nome e usuário são obrigatórios."}), 400
+        if len(senha) < 6:
+            return jsonify({"ok": False, "erro": "A senha deve ter pelo menos 6 caracteres."}), 400
+        if not profile:
+            return jsonify({"ok": False, "erro": "Selecione um perfil válido."}), 400
+        if profile["nome"] == "Administrador" and not is_admin():
+            return jsonify({"ok": False, "erro": "Somente um administrador pode criar outro administrador."}), 403
+        if "permissoes" in d and not has_permission("permissoes.alterar"):
+            return jsonify({"ok": False, "erro": "Você não pode personalizar permissões."}), 403
         try:
-            db.execute(
-                "INSERT INTO usuarios (nome, login, senha, nivel) VALUES (?,?,?,?)",
-                (d.get("nome"), d.get("login"), generate_password_hash(senha), d.get("nivel", "funcionario"))
+            cursor = db.execute(
+                """INSERT INTO usuarios
+                   (nome, login, senha, nivel, perfil_id, ativo, bloqueado, exigir_troca_senha, senha_alterada_em)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (
+                    nome, login, generate_password_hash(senha),
+                    "admin" if profile["nome"] == "Administrador" else "funcionario",
+                    profile["id"], int(bool(d.get("ativo", True))), int(bool(d.get("bloqueado", False))),
+                    int(bool(d.get("exigir_troca_senha", False))), datetime.now().isoformat(timespec="seconds"),
+                ),
             )
+            if "permissoes" in d:
+                _save_permission_overrides(db, cursor.lastrowid, profile["id"], d["permissoes"])
             db.commit()
-        except Exception:
-            return jsonify({"ok": False, "erro": "Login já existe"}), 400
-        log_auditoria("CRIAR_USUARIO", f"Usuário {d.get('login')} criado")
-        return jsonify({"ok": True})
+        except sqlite3.IntegrityError:
+            db.rollback()
+            return jsonify({"ok": False, "erro": "Este usuário de acesso já existe."}), 400
+        log_auditoria("CRIAR_USUARIO", f"Usuário {login} criado com perfil {profile['nome']}")
+        return jsonify({"ok": True, "id": cursor.lastrowid})
 
     @app.route("/api/usuarios/<int:uid>", methods=["PUT"])
-    @admin_required
+    @permission_required("usuarios.criar")
     def api_usuario_update(uid):
         db = get_db()
         d = request.json or {}
-        if d.get("senha"):
-            db.execute("UPDATE usuarios SET nome=?, login=?, nivel=?, ativo=?, senha=? WHERE id=?",
-                       (d.get("nome"), d.get("login"), d.get("nivel"), int(bool(d.get("ativo", True))),
-                        generate_password_hash(d["senha"]), uid))
-        else:
-            db.execute("UPDATE usuarios SET nome=?, login=?, nivel=?, ativo=? WHERE id=?",
-                       (d.get("nome"), d.get("login"), d.get("nivel"), int(bool(d.get("ativo", True))), uid))
-        db.commit()
-        log_auditoria("EDITAR_USUARIO", f"Usuário #{uid} atualizado")
+        target = get_user_with_profile(uid, db)
+        if not target:
+            return jsonify({"ok": False, "erro": "Usuário não encontrado."}), 404
+        profile = _profile(db, d.get("perfil_id"))
+        if not profile:
+            return jsonify({"ok": False, "erro": "Selecione um perfil válido."}), 400
+        if (target["perfil_nome"] == "Administrador" or profile["nome"] == "Administrador") and not is_admin():
+            return jsonify({"ok": False, "erro": "Somente um administrador pode alterar administradores."}), 403
+        if "permissoes" in d and not has_permission("permissoes.alterar"):
+            return jsonify({"ok": False, "erro": "Você não pode personalizar permissões."}), 403
+        if uid == session.get("usuario_id") and not is_admin() and "permissoes" in d:
+            return jsonify({"ok": False, "erro": "Você não pode alterar as próprias permissões."}), 403
+        ativo = int(bool(d.get("ativo", True)))
+        bloqueado = int(bool(d.get("bloqueado", False)))
+        will_be_admin = profile["nome"] == "Administrador"
+        is_target_admin = target["nivel"] == "admin" or target["perfil_nome"] == "Administrador"
+        if is_target_admin and (not will_be_admin or not ativo or bloqueado) and _active_admin_count(db) <= 1:
+            return jsonify({"ok": False, "erro": "O sistema precisa manter ao menos um administrador ativo."}), 400
+        if uid == session.get("usuario_id") and (not ativo or bloqueado):
+            return jsonify({"ok": False, "erro": "Não é possível desativar ou bloquear a própria conta."}), 400
+        nome = str(d.get("nome") or "").strip()
+        login = str(d.get("login") or "").strip()
+        if not nome or not login:
+            return jsonify({"ok": False, "erro": "Nome e usuário são obrigatórios."}), 400
+        try:
+            values = [
+                nome, login, "admin" if will_be_admin else "funcionario", profile["id"],
+                ativo, bloqueado, int(bool(d.get("exigir_troca_senha", False))),
+            ]
+            sql = """UPDATE usuarios SET nome=?, login=?, nivel=?, perfil_id=?, ativo=?,
+                     bloqueado=?, exigir_troca_senha=?"""
+            senha = str(d.get("senha") or "")
+            if senha:
+                if len(senha) < 6:
+                    return jsonify({"ok": False, "erro": "A senha deve ter pelo menos 6 caracteres."}), 400
+                sql += ", senha=?, senha_alterada_em=?"
+                values.extend([generate_password_hash(senha), datetime.now().isoformat(timespec="seconds")])
+            sql += " WHERE id=?"
+            values.append(uid)
+            db.execute(sql, values)
+            if "permissoes" in d:
+                _save_permission_overrides(db, uid, profile["id"], d["permissoes"])
+            db.commit()
+        except sqlite3.IntegrityError:
+            db.rollback()
+            return jsonify({"ok": False, "erro": "Este usuário de acesso já existe."}), 400
+        log_auditoria("EDITAR_USUARIO", f"Usuário #{uid} atualizado; perfil {profile['nome']}")
         return jsonify({"ok": True})
 
     @app.route("/api/usuarios/<int:uid>", methods=["DELETE"])
-    @admin_required
+    @permission_required("usuarios.criar")
     def api_usuario_delete(uid):
         if uid == session.get("usuario_id"):
             return jsonify({"ok": False, "erro": "Não é possível excluir o próprio usuário"}), 400
         db = get_db()
-        db.execute("UPDATE usuarios SET ativo=0 WHERE id=?", (uid,))
+        target = get_user_with_profile(uid, db)
+        if not target:
+            return jsonify({"ok": False, "erro": "Usuário não encontrado."}), 404
+        if (target["nivel"] == "admin" or target["perfil_nome"] == "Administrador") and _active_admin_count(db) <= 1:
+            return jsonify({"ok": False, "erro": "O sistema precisa manter ao menos um administrador ativo."}), 400
+        db.execute("UPDATE usuarios SET ativo=0, bloqueado=1 WHERE id=?", (uid,))
         db.commit()
         log_auditoria("EXCLUIR_USUARIO", f"Usuário #{uid} desativado")
         return jsonify({"ok": True})
@@ -72,12 +223,12 @@ def register_admin_routes(app):
     # =================== AUDITORIA ===================
 
     @app.route("/auditoria")
-    @admin_required
+    @permission_required("auditoria.visualizar")
     def auditoria():
         return render_template("auditoria.html")
 
     @app.route("/api/auditoria")
-    @admin_required
+    @permission_required("auditoria.visualizar")
     def api_auditoria():
         db = get_db()
         rows = db.execute("SELECT * FROM auditoria ORDER BY data_hora DESC LIMIT 500").fetchall()
@@ -86,19 +237,19 @@ def register_admin_routes(app):
     # =================== GARÇONS ===================
 
     @app.route("/garcons")
-    @login_required
+    @permission_required("garcons.acessar")
     def garcons():
         return render_template("garcons.html")
 
     @app.route("/api/garcons")
-    @login_required
+    @permission_required("garcons.acessar")
     def api_garcons_list():
         db = get_db()
         rows = db.execute("SELECT * FROM garcons ORDER BY nome").fetchall()
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/garcons", methods=["POST"])
-    @admin_required
+    @permission_required("garcons.alterar")
     def api_garcon_create():
         db = get_db()
         d = request.json or {}
@@ -112,7 +263,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True, "id": cur.lastrowid})
 
     @app.route("/api/garcons/<int:gid>", methods=["PUT"])
-    @admin_required
+    @permission_required("garcons.alterar")
     def api_garcon_update(gid):
         db = get_db()
         d = request.json or {}
@@ -124,7 +275,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/garcons/<int:gid>", methods=["DELETE"])
-    @admin_required
+    @permission_required("garcons.alterar")
     def api_garcon_delete(gid):
         db = get_db()
         db.execute("UPDATE garcons SET ativo=0 WHERE id=?", (gid,))
@@ -135,12 +286,12 @@ def register_admin_routes(app):
     # =================== CONTAS A PAGAR ===================
 
     @app.route("/contas_pagar")
-    @login_required
+    @permission_required("contas.acessar")
     def contas_pagar():
         return render_template("contas_pagar.html")
 
     @app.route("/api/contas_pagar")
-    @login_required
+    @permission_required("contas.acessar")
     def api_contas_pagar_list():
         db = get_db()
         filtro = request.args.get("status", "todos")
@@ -157,7 +308,7 @@ def register_admin_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/contas_pagar", methods=["POST"])
-    @admin_required
+    @permission_required("contas.alterar")
     def api_contas_pagar_create():
         db = get_db()
         d = request.json or {}
@@ -176,7 +327,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True, "id": cur.lastrowid})
 
     @app.route("/api/contas_pagar/<int:cid>/pagar", methods=["POST"])
-    @admin_required
+    @permission_required("contas.alterar")
     def api_contas_pagar_pagar(cid):
         db = get_db()
         db.execute("UPDATE contas_pagar SET status='pago', pagamento=date('now') WHERE id=?", (cid,))
@@ -185,7 +336,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/contas_pagar/<int:cid>", methods=["DELETE"])
-    @admin_required
+    @permission_required("contas.alterar")
     def api_contas_pagar_delete(cid):
         db = get_db()
         db.execute("UPDATE contas_pagar SET status='cancelado' WHERE id=?", (cid,))
@@ -194,7 +345,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/contas_pagar/verificar_atrasadas")
-    @login_required
+    @permission_required("contas.acessar")
     def api_verificar_atrasadas():
         db = get_db()
         db.execute("UPDATE contas_pagar SET status='atrasado' WHERE status='pendente' AND vencimento < date('now')")
@@ -204,7 +355,7 @@ def register_admin_routes(app):
     # =================== ALERTAS ===================
 
     @app.route("/api/alertas")
-    @login_required
+    @any_permission_required("estoque.visualizar", "pdv.acessar", "mesas.acessar")
     def api_alertas():
         db = get_db()
         criticos = db.execute("SELECT nome, estoque, estoque_minimo FROM produtos WHERE ativo=1 AND estoque <= estoque_minimo").fetchall()
@@ -217,7 +368,7 @@ def register_admin_routes(app):
     # =================== CONFIG / LOGO ===================
 
     @app.route("/api/config/logo", methods=["POST"])
-    @admin_required
+    @permission_required("configuracoes.acessar")
     def api_upload_logo():
         if "logo" not in request.files:
             return jsonify({"ok": False, "erro": "Nenhum arquivo enviado"}), 400
@@ -239,7 +390,7 @@ def register_admin_routes(app):
         return jsonify({"ok": True, "timestamp": int(time.time())})
 
     @app.route("/api/config/logo", methods=["DELETE"])
-    @admin_required
+    @permission_required("configuracoes.acessar")
     def api_remover_logo():
         logo_path = os.path.join(app.static_folder, "uploads", "logo.png")
         if os.path.exists(logo_path):
@@ -250,7 +401,7 @@ def register_admin_routes(app):
     # =================== BACKUP ===================
 
     @app.route("/api/backup")
-    @admin_required
+    @permission_required("backup.gerar")
     def api_backup():
         db_path = app.config["DATABASE"]
         if not os.path.exists(db_path):
@@ -263,14 +414,14 @@ def register_admin_routes(app):
     # =================== EMPRESA ===================
 
     @app.route("/api/empresa")
-    @login_required
+    @permission_required("configuracoes.acessar")
     def api_empresa_get():
         db = get_db()
         empresa = db.execute("SELECT * FROM empresa LIMIT 1").fetchone()
         return jsonify(dict(empresa) if empresa else {})
 
     @app.route("/api/empresa", methods=["POST"])
-    @admin_required
+    @permission_required("configuracoes.acessar")
     def api_empresa_save():
         db = get_db()
         d = request.json or {}

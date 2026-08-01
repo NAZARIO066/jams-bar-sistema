@@ -28,7 +28,12 @@ CREATE TABLE IF NOT EXISTS usuarios (
     senha TEXT NOT NULL,
     nivel TEXT NOT NULL CHECK(nivel IN ('admin','funcionario')),
     ativo INTEGER NOT NULL DEFAULT 1,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    perfil_id INTEGER REFERENCES perfis_acesso(id),
+    bloqueado INTEGER NOT NULL DEFAULT 0,
+    exigir_troca_senha INTEGER NOT NULL DEFAULT 0,
+    ultimo_acesso TIMESTAMP,
+    senha_alterada_em TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS mesas (
@@ -238,6 +243,38 @@ CREATE TABLE IF NOT EXISTS empresa (
     observacao TEXT
 );
 
+CREATE TABLE IF NOT EXISTS pagamentos_parciais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comanda_id INTEGER NOT NULL REFERENCES comandas(id),
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+    valor_total REAL NOT NULL,
+    desconto REAL NOT NULL DEFAULT 0,
+    forma_pagamento TEXT NOT NULL,
+    nome_pessoa TEXT,
+    cliente_id INTEGER REFERENCES clientes(id),
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS pagamentos_parciais_itens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pagamento_parcial_id INTEGER NOT NULL REFERENCES pagamentos_parciais(id) ON DELETE CASCADE,
+    item_comanda_id INTEGER NOT NULL REFERENCES itens_comanda(id),
+    quantidade_paga REAL NOT NULL,
+    valor_unitario REAL NOT NULL,
+    subtotal REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS config_acesso_rapido (
+    id INTEGER PRIMARY KEY,
+    modo TEXT NOT NULL DEFAULT 'automatico' CHECK(modo IN ('manual','automatico','misto'))
+);
+
+CREATE TABLE IF NOT EXISTS acesso_rapido_produtos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    produto_id INTEGER NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+    ordem INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_comandas_mesa ON comandas(mesa_id);
 CREATE INDEX IF NOT EXISTS idx_comandas_status ON comandas(status);
 CREATE INDEX IF NOT EXISTS idx_contas_pagar_vencimento ON contas_pagar(vencimento);
@@ -246,4 +283,39 @@ CREATE INDEX IF NOT EXISTS idx_garcons_ativo ON garcons(ativo);
 CREATE INDEX IF NOT EXISTS idx_historico_transferencias_comanda ON historico_transferencias(comanda_id);
 CREATE INDEX IF NOT EXISTS idx_historico_transferencias_origem ON historico_transferencias(mesa_origem_id);
 CREATE INDEX IF NOT EXISTS idx_suprimento_sangria_caixa ON suprimento_sangria(caixa_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_parciais_comanda ON pagamentos_parciais(comanda_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_parciais_itens_pagamento ON pagamentos_parciais_itens(pagamento_parcial_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_parciais_itens_item ON pagamentos_parciais_itens(item_comanda_id);
+
+CREATE TABLE IF NOT EXISTS perfis_acesso (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL UNIQUE,
+    descricao TEXT,
+    sistema INTEGER NOT NULL DEFAULT 1,
+    ativo INTEGER NOT NULL DEFAULT 1,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS permissoes (
+    chave TEXT PRIMARY KEY,
+    nome TEXT NOT NULL,
+    grupo TEXT NOT NULL,
+    descricao TEXT
+);
+
+CREATE TABLE IF NOT EXISTS perfil_permissoes (
+    perfil_id INTEGER NOT NULL REFERENCES perfis_acesso(id) ON DELETE CASCADE,
+    permissao_chave TEXT NOT NULL REFERENCES permissoes(chave) ON DELETE CASCADE,
+    PRIMARY KEY (perfil_id, permissao_chave)
+);
+
+CREATE TABLE IF NOT EXISTS usuario_permissoes (
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    permissao_chave TEXT NOT NULL REFERENCES permissoes(chave) ON DELETE CASCADE,
+    permitido INTEGER NOT NULL CHECK(permitido IN (0,1)),
+    PRIMARY KEY (usuario_id, permissao_chave)
+);
+
+CREATE INDEX IF NOT EXISTS idx_perfil_permissoes_perfil ON perfil_permissoes(perfil_id);
+CREATE INDEX IF NOT EXISTS idx_usuario_permissoes_usuario ON usuario_permissoes(usuario_id);
 """

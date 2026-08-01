@@ -1,0 +1,168 @@
+{
+  "fonte": {
+    "categorias": 9,
+    "produtos": 265,
+    "clientes": 81,
+    "vendas": 26058,
+    "itens_venda": 45520,
+    "creditos": 2356,
+    "compras": 1604,
+    "estoque_saidas": 440,
+    "funcionarios": 10,
+    "mesas": 40,
+    "caixas": 732,
+    "pedidos_abertos": 18
+  },
+  "importados": {
+    "categorias": 9,
+    "produtos": 265,
+    "clientes": 81,
+    "garcons": 10,
+    "mesas": 40,
+    "comandas": 18,
+    "itens_comanda": 75,
+    "vendas": 26058,
+    "itens_venda": 45520,
+    "fiado": 2356,
+    "caixas": 732,
+    "movimentacoes": 47618,
+    "contas_pagar": 0,
+    "usuarios_legados_inativos": 3,
+    "imagens_produtos": 20,
+    "movimentos_compras": 1604,
+    "movimentos_saidas_estoque": 440,
+    "pedidos_abertos_fonte": 18
+  },
+  "avisos": [
+    "83 produtos permaneceram sem categoria porque a fonte não informa o grupo.",
+    "7 produtos vieram com preço zero.",
+    "86 produtos vieram com estoque negativo.",
+    "1 cliente inativo veio sem nome e recebeu identificação técnica pelo ID.",
+    "O backup não contém cadastro real de fornecedores; contas a pagar permaneceu vazia."
+  ],
+  "erros": [],
+  "ajustes_saldo": 0,
+  "imagens": [
+    {
+      "produto_id": 3,
+      "arquivo": "produto_3.bmp",
+      "bytes": 6968,
+      "sha256": "ca9fbf5c593db5cd29e4975d0fe63882dd8aa86cdb3387e1bec2cd099b1e4a29"
+    },
+    {
+      "produto_id": 4,
+      "arquivo": "produto_4.bmp",
+      "bytes": 6968,
+      "sha256": "47e04e85e274779fcc21a1d36a86991491cd67fd2e01bb5a6d1f58462f6c7d1f"
+    },
+    {
+      "produto_id": 9,
+      "arquivo": "produto_9.bmp",
+      "bytes": 9338,
+      "sha256": "e61becfcaee4d895eaeca82bf1e75726f9e591d8a1b8c658118477792c726c39"
+    },
+    {
+      "produto_id": 11,
+      "arquivo": "produto_11.bmp",
+      "bytes": 9338,
+      "sha256": "5cfb48aa8b47a6504ebefaaaf453ae2d9182ca4695c18cd41da0b5ce964ac755"
+    },
+    {
+      "produto_id": 14,
+      "arquivo": "produto_14.bmp",
+      "bytes": 6968,
+      "sha256": "14ba3da0e99bee09db89b739c4af9eea627a15ae419550fa8611c0cc5ca20526"
+    },
+    {
+      "produto_id": 25,
+      "arquivo": "produto_25.bmp",
+      "bytes": 6968,
+      "sha256": "9f07c88fb694326b371731be2d80fb3993d40f716b6b54d11b7677241b5ae697"
+    },
+    {
+      "produto_id": 27,
+      "arquivo": "produto_27.bmp",
+      "bytes": 4664,
+      "sha256": "43124cbe96d1f5840b2c85b6ced83ef421dbe1148416b2f1f6d969e06fed2fa2"
+    },
+    {
+      "produto_id": 28,
+      "arquivo": "produto_28.bmp",
+      "bytes": 4664,
+      "sha256": "27677323dbcbcf79dee86fbd02a7976470fcddc7c94a09954425931bcf7d6112"
+    },
+    {
+      "produto_id": 29,
+      "arquivo": "produto_29.bmp",
+      "bytes": 4664,
+      "sha256": "998052582b89d65ab02bbaca09a35dbebaa0998ad36f280670945e428d962ecd"
+    },
+    {
+      "produto_id": 30,
+      "arquivo": "produto_30.bmp",
+      "bytes": 4664,
+      "sha256": "c90618aabbb7c05112bcbc6a9f0856900fdbb573e5a7b3bd3aab242ceb1cab5a"
+    },
+    {
+      "produto_id": 31,
+      "arquivo": "produto_31.bmp",
+      "bytes": 6968,
+      "sha256": "cb41b63e35ac4c18c4b8489db394ea2160aaabe56fcfbbc7b2d327f7fd86fd42"
+    },
+    {
+      "produto_id": 32,
+      "arquivo": "produto_32.bmp",
+      "bytes": 4664,
+      "sha256": "b35ce61e191f0250013ad534e6055581bb1fd8911bae19557a33f8ada3ed61e9"
+    },
+    {
+      "produto_id": 34,
+      "arquivo": "produto_34.bmp",
+      "bytes": 6968,
+      "sha256": "911817d3bb21843b7cd7da3235b34926dc364554c43dffbd36659babaa184808"
+    },
+    {
+      "produto_id": 52,
+      "arquivo": "produto_52.bmp",
+      "bytes": 4664,
+      "sha256": "3dc3c13b3d8fbca51b7216f58665587bbc999cf77bd873154460c0f1bcfa0a5f"
+    },
+    {
+      "produto_id": 53,
+      "arquivo": "produto_53.bmp",
+      "bytes": 4664,
+      "sha256": "85a8bf7b278cd6d3e47066563983adab344522c9859eeb22020dd7938587cc37"
+    },
+    {
+      "produto_id": 54,
+      "arquivo": "produto_54.bmp",
+      "bytes": 4664,
+      "sha256": "81e78c236e0c624da8222f78793394de72dd7b74f175912b3a1d1665d1140ac6"
+    },
+    {
+      "produto_id": 56,
+      "arquivo": "produto_56.bmp",
+      "bytes": 6968,
+      "sha256": "b699d4a331e35b03b69fd16eadde146ef1e68621016e9c3a6bd2728cd395f17f"
+    },
+    {
+      "produto_id": 62,
+      "arquivo": "produto_62.bmp",
+      "bytes": 6968,
+      "sha256": "43d8a094625a27a0bde67c2ba2942c042a85c590f89c48dc400a57bc4fe65913"
+    },
+    {
+      "produto_id": 63,
+      "arquivo": "produto_63.bmp",
+      "bytes": 6968,
+      "sha256": "8196b49944db71159b84906181f7e8a5a6d1a1f5bbc9c7898e3b5741ae0a8b41"
+    },
+    {
+      "produto_id": 83,
+      "arquivo": "produto_83.bmp",
+      "bytes": 9338,
+      "sha256": "c775ef7977a33aed6f6f0cb29b5899ea20030bf9f17d4c493403ac12f1e0b5a7"
+    }
+  ],
+  "integridade_sqlite": "ok"
+}

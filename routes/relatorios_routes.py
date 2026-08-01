@@ -2,18 +2,18 @@ import os
 from datetime import date, timedelta
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, admin_required
+from auth import permission_required
 
 
 def register_relatorios_routes(app):
 
     @app.route("/relatorios")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def relatorios():
         return render_template("relatorios.html")
 
     @app.route("/api/relatorios/vendas")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_vendas():
         db = get_db()
         inicio = request.args.get("inicio")
@@ -39,7 +39,7 @@ def register_relatorios_routes(app):
         })
 
     @app.route("/api/relatorios/mesas")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_mesas():
         db = get_db()
         rows = db.execute("""
@@ -53,7 +53,7 @@ def register_relatorios_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/produtos")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_produtos():
         db = get_db()
         mais = db.execute("""
@@ -84,7 +84,7 @@ def register_relatorios_routes(app):
         })
 
     @app.route("/api/relatorios/vendas_produto")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_vendas_produto():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
@@ -101,7 +101,7 @@ def register_relatorios_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/vendas_categoria")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_vendas_categoria():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
@@ -117,7 +117,7 @@ def register_relatorios_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/vendas_garcom")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_vendas_garcom():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
@@ -133,13 +133,13 @@ def register_relatorios_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/fluxo_caixa")
-    @admin_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_fluxo_caixa():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
         fim = request.args.get("fim", date.today().isoformat())
         vendas = db.execute("""
-            SELECT SUM(valor_total) as total, COUNT(*) as qtd
+            SELECT COALESCE(SUM(valor_total),0) as total, COUNT(*) as qtd
             FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada'
         """, (inicio, fim)).fetchone()
         suprimentos = db.execute("""
@@ -158,7 +158,7 @@ def register_relatorios_routes(app):
         })
 
     @app.route("/api/relatorios/sangrias")
-    @admin_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_sangrias():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
@@ -172,7 +172,7 @@ def register_relatorios_routes(app):
         return jsonify([dict(r) for r in rows])
 
     @app.route("/api/relatorios/suprimentos")
-    @admin_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar")
     def api_rel_suprimentos():
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())
@@ -228,7 +228,7 @@ def register_relatorios_routes(app):
         return str(val)
 
     @app.route("/imprimir/relatorio/<tipo>")
-    @login_required
+    @permission_required("relatorios.visualizar", "financeiro.visualizar", "impressao.imprimir")
     def imprimir_relatorio(tipo):
         db = get_db()
         inicio = request.args.get("inicio", date.today().isoformat())

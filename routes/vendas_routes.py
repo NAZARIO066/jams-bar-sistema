@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, admin_required, log_auditoria
+from auth import has_permission, log_auditoria, permission_required
 from services.venda_service import processar_venda_direta, cancelar_venda
 from services.fiado_service import tem_fiado_vencido
 
@@ -9,20 +9,26 @@ from services.fiado_service import tem_fiado_vencido
 def register_vendas_routes(app):
 
     @app.route("/vendas")
-    @login_required
+    @permission_required("pdv.acessar")
     def vendas():
         return render_template("vendas.html")
 
     @app.route("/api/venda/direta", methods=["POST"])
-    @login_required
+    @permission_required("pdv.acessar", "vendas.abrir", "vendas.fechar")
     def api_venda_direta():
         d = request.json or {}
         itens = d.get("itens", [])
-        desconto = float(d.get("desconto", 0))
-        acrescimo = float(d.get("acrescimo", 0))
+        try:
+            desconto = float(d.get("desconto", 0))
+            acrescimo = float(d.get("acrescimo", 0))
+            dias_vencimento = int(d.get("dias_vencimento", 30))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "erro": "Valores numéricos inválidos"}), 400
+        if desconto > 0 and not has_permission("vendas.desconto"):
+            log_auditoria("ACESSO_NEGADO", "Tentativa de conceder desconto sem permissão")
+            return jsonify({"ok": False, "erro": "Você não tem permissão para conceder desconto."}), 403
         forma = d.get("forma_pagamento", "Dinheiro")
         cliente_id = d.get("cliente_id")
-        dias_vencimento = int(d.get("dias_vencimento", 30))
 
         if not itens:
             return jsonify({"ok": False, "erro": "Nenhum item"}), 400
@@ -55,7 +61,7 @@ def register_vendas_routes(app):
         return jsonify(resultado), status
 
     @app.route("/api/venda/<int:venda_id>/cancelar", methods=["POST"])
-    @admin_required
+    @permission_required("vendas.cancelar")
     def api_cancelar_venda(venda_id):
         resultado, status = cancelar_venda(venda_id, session["usuario_id"])
         if resultado.get("ok"):

@@ -6,7 +6,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
+const isAdmin = {{ 'true' if pode('caixa.movimentar') else 'false' }};
 async function load() {
   const r = await fetch('/api/caixa/status');
   const d = await r.json();

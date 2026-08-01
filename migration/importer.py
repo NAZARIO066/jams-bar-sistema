@@ -6,6 +6,17 @@ import sqlite3
 import chardet
 
 
+def _active_database_path():
+    try:
+        from flask import current_app
+        return current_app.config["DATABASE"]
+    except RuntimeError:
+        return os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "bar_adega.db",
+        )
+
+
 class AnalysisResult:
     def __init__(self):
         self.ok = True
@@ -351,10 +362,7 @@ def analisar_arquivo(filepath, tipo_fonte):
 def importar_dados(filepath, tipo_fonte, opcoes=None):
     """Importação real dos dados para o banco ativo."""
     opcoes = opcoes or {}
-    db_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "bar_adega.db"
-    )
+    db_path = _active_database_path()
     if not os.path.exists(db_path):
         return {"ok": False, "erro": "Banco de dados alvo não encontrado"}
 

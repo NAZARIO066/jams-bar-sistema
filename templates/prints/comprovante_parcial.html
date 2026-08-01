@@ -40,26 +40,26 @@
     <div style="font-size:9pt; font-weight:bold; margin-bottom:1mm;">Itens Pagos:</div>
     {% for item in itens_pagos %}
     <div class="payment-row">
-      <span>{{ item.quantidade }}x {{ item.produto_nome }}</span>
-      <span>R$ {{ "%.2f"|format(item.subtotal) }}</span>
+      <span>{{ item.quantidade|quantidade_br }}x {{ item.produto_nome }}</span>
+      <span>{{ item.subtotal|moeda_brl }}</span>
     </div>
     {% endfor %}
 
     <hr class="sep">
 
     <div class="totals">
-      <div class="row"><span>Subtotal dos itens</span><span>R$ {{ "%.2f"|format(pagamento.valor_total) }}</span></div>
+      <div class="row"><span>Subtotal dos itens</span><span>{{ pagamento.valor_total|moeda_brl }}</span></div>
       {% if pagamento.desconto > 0 %}
-      <div class="row"><span>Desconto</span><span>- R$ {{ "%.2f"|format(pagamento.desconto) }}</span></div>
+      <div class="row"><span>Desconto</span><span>- {{ pagamento.desconto|moeda_brl }}</span></div>
       {% endif %}
       <div class="row total-final">
         <span>PAGO</span>
-        <span>R$ {{ "%.2f"|format(pagamento.valor_total - pagamento.desconto) }}</span>
+        <span>{{ (pagamento.valor_total - pagamento.desconto)|moeda_brl }}</span>
       </div>
     </div>
 
     <div class="remaining">
-      RESTANTE: R$ {{ "%.2f"|format(saldo_restante) }}
+      RESTANTE: {{ saldo_restante|moeda_brl }}
     </div>
 
     <div class="footer">
@@ -68,8 +68,6 @@
     </div>
   </div>
 
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
+  <script src="{{ url_for('static', filename='js/print-helper.js') }}"></script>
 </body>
 </html>

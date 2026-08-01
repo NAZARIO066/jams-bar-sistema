@@ -1,18 +1,18 @@
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, admin_required, log_auditoria
+from auth import log_auditoria, permission_required
 from services.estoque_service import registrar_entrada, produto_existe
 
 
 def register_estoque_routes(app):
 
     @app.route("/estoque")
-    @login_required
+    @permission_required("estoque.visualizar")
     def estoque():
         return render_template("estoque.html")
 
     @app.route("/api/estoque")
-    @login_required
+    @permission_required("estoque.visualizar")
     def api_estoque_list():
         db = get_db()
         rows = db.execute("""
@@ -29,7 +29,7 @@ def register_estoque_routes(app):
         return jsonify(result)
 
     @app.route("/api/estoque/entrada", methods=["POST"])
-    @admin_required
+    @permission_required("estoque.movimentar")
     def api_estoque_entrada():
         d = request.json or {}
         pid = d.get("produto_id")
@@ -47,7 +47,7 @@ def register_estoque_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/estoque/saida", methods=["POST"])
-    @admin_required
+    @permission_required("estoque.movimentar")
     def api_estoque_saida():
         db = get_db()
         d = request.json or {}
@@ -71,7 +71,7 @@ def register_estoque_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/movimentacoes")
-    @login_required
+    @permission_required("estoque.visualizar")
     def api_movimentacoes():
         db = get_db()
         rows = db.execute("""

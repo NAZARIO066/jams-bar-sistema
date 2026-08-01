@@ -1,111 +1,244 @@
 {% extends 'base.html' %}
-{% block title %}Usuários{% endblock %}
-{% block page_title %}👥 Usuários{% endblock %}
+{% block title %}Usuários e acessos{% endblock %}
+{% block page_title %}Usuários e controle de acesso{% endblock %}
 {% block content %}
-<div class="flex justify-end mb-4">
-  <button onclick="abrir()" class="btn btn-primary">+ Novo Usuário</button>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <p class="page-lead" style="margin:0">Defina o perfil de cada funcionário e personalize somente o que ele pode visualizar ou executar.</p>
+  {% if pode('usuarios.criar') %}
+  <button type="button" onclick="abrirUsuario()" class="btn btn-primary"><i data-lucide="user-plus" aria-hidden="true"></i>Novo funcionário</button>
+  {% endif %}
 </div>
+
+<div class="grid sm:grid-cols-3 gap-3 mb-4" aria-label="Resumo de usuários">
+  <div class="card p-4"><div class="eyebrow">Cadastrados</div><div id="total-usuarios" class="text-2xl font-bold">—</div></div>
+  <div class="card p-4"><div class="eyebrow">Ativos</div><div id="total-ativos" class="text-2xl font-bold text-green-400">—</div></div>
+  <div class="card p-4"><div class="eyebrow">Bloqueados</div><div id="total-bloqueados" class="text-2xl font-bold text-red-400">—</div></div>
+</div>
+
 <div class="card overflow-auto">
   <table class="table">
-    <thead><tr><th>Nome</th><th>Login</th><th>Nível</th><th>Status</th><th>Criado em</th><th></th></tr></thead>
-    <tbody id="lista"></tbody>
+    <thead><tr><th>Funcionário</th><th>Usuário</th><th>Perfil</th><th>Status</th><th>Último acesso</th><th aria-label="Ações"></th></tr></thead>
+    <tbody id="lista"><tr><td colspan="6" class="text-center text-slate-400">Carregando...</td></tr></tbody>
   </table>
 </div>
 
-<div id="modal" class="hidden modal-bg">
-  <div class="modal-box">
+<div id="modal" class="hidden modal-bg" onclick="if(event.target===this)fecharUsuario()">
+  <div class="modal-box access-modal">
     <div class="p-4 border-b border-ink-700 flex items-center justify-between">
-      <h3 id="titulo" class="font-bold text-lg">Usuário</h3>
-      <button onclick="fechar()" class="text-slate-400">✕</button>
-    </div>
-    <form class="p-4 space-y-3" onsubmit="salvar(event)">
-      <input type="hidden" id="uid">
-      <div><label class="text-sm">Nome</label><input id="nome" required class="w-full px-3 py-2 rounded"></div>
-      <div><label class="text-sm">Login</label><input id="login" required class="w-full px-3 py-2 rounded"></div>
-      <div><label class="text-sm">Senha <span id="snh-info" class="text-slate-500 text-xs"></span></label><input id="senha" class="w-full px-3 py-2 rounded"></div>
-      <div><label class="text-sm">Nível</label>
-        <select id="nivel" class="w-full px-3 py-2 rounded"><option value="funcionario">Funcionário</option><option value="admin">Administrador</option></select>
+      <div>
+        <h3 id="titulo" class="modal-title"><i data-lucide="user-cog" aria-hidden="true"></i>Funcionário</h3>
+        <p class="text-xs text-slate-400 mt-1">Credenciais, perfil e permissões efetivas.</p>
       </div>
-      <label class="flex items-center gap-2"><input id="ativo" type="checkbox" checked> <span class="text-sm">Ativo</span></label>
-      <button class="btn btn-primary w-full">Salvar</button>
+      <button type="button" onclick="fecharUsuario()" class="icon-btn" aria-label="Fechar cadastro"><i data-lucide="x" aria-hidden="true"></i></button>
+    </div>
+    <form class="p-4 space-y-5" onsubmit="salvarUsuario(event)">
+      <input type="hidden" id="uid">
+      <div class="grid md:grid-cols-2 gap-3">
+        <div><label class="text-sm" for="nome">Nome</label><input id="nome" required class="w-full px-3 py-2 mt-1" autocomplete="name"></div>
+        <div><label class="text-sm" for="login">Usuário de acesso</label><input id="login" required class="w-full px-3 py-2 mt-1" autocomplete="off"></div>
+        <div><label class="text-sm" for="senha">Senha <span id="snh-info" class="text-slate-500 text-xs"></span></label><input id="senha" type="password" minlength="6" class="w-full px-3 py-2 mt-1" autocomplete="new-password"></div>
+        <div><label class="text-sm" for="perfil">Perfil</label><select id="perfil" class="w-full px-3 py-2 mt-1" onchange="onPerfilMudou()"></select></div>
+      </div>
+
+      <div class="access-switches">
+        <label class="access-switch"><input id="ativo" type="checkbox" checked><span><strong>Acesso ativo</strong><small>Pode entrar no sistema</small></span></label>
+        <label class="access-switch"><input id="bloqueado" type="checkbox"><span><strong>Usuário bloqueado</strong><small>Encerra e impede o acesso</small></span></label>
+        <label class="access-switch"><input id="exigir-troca" type="checkbox"><span><strong>Trocar senha no próximo login</strong><small>Exige uma nova senha antes do uso</small></span></label>
+      </div>
+
+      <section class="permissions-section" id="permissions-section">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h4 class="section-title">Permissões</h4>
+            <p id="permission-help" class="text-xs text-slate-400 mt-1">O perfil preenche uma base que pode ser personalizada.</p>
+          </div>
+          <button type="button" class="btn btn-secondary" id="btn-restaurar-perfil" onclick="aplicarPadraoPerfil()"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Usar padrão do perfil</button>
+        </div>
+        <div id="permissoes" class="permission-groups"></div>
+      </section>
+
+      <div class="flex flex-wrap justify-end gap-2 border-t border-ink-700 pt-4">
+        <button type="button" onclick="fecharUsuario()" class="btn btn-secondary">Cancelar</button>
+        <button id="btn-salvar-usuario" class="btn btn-primary" type="submit"><i data-lucide="save" aria-hidden="true"></i>Salvar funcionário</button>
+      </div>
     </form>
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-async function listar() {
-  const r = await fetch('/api/usuarios');
-  const lista = await r.json();
-  document.getElementById('lista').innerHTML = lista.map(u => `
-    <tr>
-      <td class="font-medium">${u.nome}</td>
-      <td>${u.login}</td>
-      <td><span class="badge ${u.nivel==='admin'?'badge-blue':'badge-gray'}">${u.nivel}</span></td>
-      <td>${u.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-red">Inativo</span>'}</td>
-      <td class="text-xs text-slate-400">${fmtData(u.criado_em)}</td>
-      <td class="text-right">
-        <button onclick="editar(${u.id})" class="text-blue-400 mr-2">✏</button>
-        <button onclick="excluir(${u.id})" class="text-red-400">🗑</button>
-      </td>
-    </tr>
-  `).join('');
+let usuariosCache = [];
+let acessoConfig = null;
+
+async function carregarConfigAcesso() {
+  if (acessoConfig) return acessoConfig;
+  const resposta = await fetch('/api/perfis-permissoes');
+  if (!resposta.ok) throw new Error('Não foi possível carregar perfis e permissões.');
+  acessoConfig = await resposta.json();
+  const perfil = document.getElementById('perfil');
+  perfil.innerHTML = acessoConfig.perfis.map(p => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`).join('');
+  return acessoConfig;
 }
 
-function abrir() {
+function statusUsuario(u) {
+  if (u.bloqueado) return '<span class="badge badge-red">Bloqueado</span>';
+  if (!u.ativo) return '<span class="badge badge-gray">Inativo</span>';
+  return '<span class="badge badge-green">Ativo</span>';
+}
+
+async function listarUsuarios() {
+  try {
+    await carregarConfigAcesso();
+    const resposta = await fetch('/api/usuarios');
+    if (!resposta.ok) throw new Error('Não foi possível carregar os usuários.');
+    usuariosCache = await resposta.json();
+    document.getElementById('total-usuarios').textContent = usuariosCache.length;
+    document.getElementById('total-ativos').textContent = usuariosCache.filter(u => u.ativo && !u.bloqueado).length;
+    document.getElementById('total-bloqueados').textContent = usuariosCache.filter(u => u.bloqueado).length;
+    document.getElementById('lista').innerHTML = usuariosCache.map(u => `
+      <tr>
+        <td class="font-medium">${escapeHtml(u.nome)}</td>
+        <td>${escapeHtml(u.login)}</td>
+        <td><span class="badge ${u.perfil_nome === 'Administrador' ? 'badge-blue' : 'badge-gold'}">${escapeHtml(u.perfil_nome || 'Sem perfil')}</span></td>
+        <td>${statusUsuario(u)}${u.exigir_troca_senha ? '<span class="badge badge-yellow ml-1">Troca pendente</span>' : ''}</td>
+        <td class="text-xs text-slate-400">${u.ultimo_acesso ? fmtData(u.ultimo_acesso) : 'Nunca acessou'}</td>
+        <td class="text-right whitespace-nowrap">
+          {% if pode('usuarios.criar') %}<button type="button" onclick="editarUsuario(${u.id})" class="icon-btn inline-grid" title="Editar" aria-label="Editar ${escapeHtml(u.nome)}"><i data-lucide="pencil" aria-hidden="true"></i></button>
+          <button type="button" onclick="desativarUsuario(${u.id})" class="icon-btn inline-grid text-red-400" title="Desativar" aria-label="Desativar ${escapeHtml(u.nome)}"><i data-lucide="user-x" aria-hidden="true"></i></button>{% endif %}
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="text-center text-slate-400">Nenhum usuário cadastrado.</td></tr>';
+    if (window.lucide) window.lucide.createIcons();
+  } catch (error) {
+    document.getElementById('lista').innerHTML = `<tr><td colspan="6" class="text-center text-red-400">${escapeHtml(error.message)}</td></tr>`;
+  }
+}
+
+function perfilAtual() {
+  return acessoConfig?.perfis.find(p => String(p.id) === String(document.getElementById('perfil').value));
+}
+
+function aplicarPadraoPerfil() {
+  const id = document.getElementById('perfil').value;
+  renderizarPermissoes(new Set(acessoConfig?.padroes?.[String(id)] || []));
+}
+
+function onPerfilMudou() {
+  aplicarPadraoPerfil();
+}
+
+function renderizarPermissoes(selecionadas) {
+  const container = document.getElementById('permissoes');
+  const groups = {};
+  (acessoConfig?.permissoes || []).forEach(p => (groups[p.grupo] ||= []).push(p));
+  const adminProfile = perfilAtual()?.nome === 'Administrador';
+  const disabled = !acessoConfig?.pode_personalizar || adminProfile;
+  document.getElementById('btn-restaurar-perfil').disabled = disabled;
+  document.getElementById('permission-help').textContent = adminProfile
+    ? 'O perfil Administrador possui acesso total e não pode ser limitado.'
+    : acessoConfig?.pode_personalizar
+      ? 'Marque ou desmarque para personalizar este funcionário.'
+      : 'Somente quem possui a permissão de administrar acessos pode personalizar esta lista.';
+  container.innerHTML = Object.entries(groups).map(([group, items]) => `
+    <fieldset class="permission-group">
+      <legend>${escapeHtml(group)}</legend>
+      <div class="permission-list">${items.map(p => `
+        <label class="permission-option">
+          <input type="checkbox" value="${p.chave}" ${selecionadas.has(p.chave) || adminProfile ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+          <span><strong>${escapeHtml(p.nome)}</strong><small>${escapeHtml(p.descricao || '')}</small></span>
+        </label>`).join('')}
+      </div>
+    </fieldset>`).join('');
+}
+
+async function abrirUsuario() {
+  await carregarConfigAcesso();
   document.getElementById('uid').value = '';
   document.getElementById('nome').value = '';
   document.getElementById('login').value = '';
   document.getElementById('senha').value = '';
-  document.getElementById('nivel').value = 'funcionario';
+  document.getElementById('senha').required = true;
+  document.getElementById('snh-info').textContent = '(mínimo de 6 caracteres)';
+  const defaultProfile = acessoConfig.perfis.find(p => p.nome === 'Atendente') || acessoConfig.perfis[0];
+  document.getElementById('perfil').value = defaultProfile?.id || '';
   document.getElementById('ativo').checked = true;
-  document.getElementById('titulo').textContent = 'Novo Usuário';
-  document.getElementById('snh-info').textContent = '';
+  document.getElementById('bloqueado').checked = false;
+  document.getElementById('exigir-troca').checked = true;
+  document.getElementById('titulo').innerHTML = '<i data-lucide="user-plus" aria-hidden="true"></i>Novo funcionário';
+  aplicarPadraoPerfil();
   document.getElementById('modal').classList.remove('hidden');
+  document.getElementById('nome').focus();
+  if (window.lucide) window.lucide.createIcons();
 }
 
-async function editar(id) {
-  const r = await fetch('/api/usuarios');
-  const lista = await r.json();
-  const u = lista.find(x => x.id === id);
+async function editarUsuario(id) {
+  await carregarConfigAcesso();
+  const u = usuariosCache.find(item => item.id === id);
   if (!u) return;
   document.getElementById('uid').value = u.id;
   document.getElementById('nome').value = u.nome;
   document.getElementById('login').value = u.login;
   document.getElementById('senha').value = '';
-  document.getElementById('nivel').value = u.nivel;
+  document.getElementById('senha').required = false;
+  document.getElementById('snh-info').textContent = '(deixe vazio para manter)';
+  document.getElementById('perfil').value = u.perfil_id;
   document.getElementById('ativo').checked = !!u.ativo;
-  document.getElementById('titulo').textContent = 'Editar Usuário';
-  document.getElementById('snh-info').textContent = '(vazio = manter)';
+  document.getElementById('bloqueado').checked = !!u.bloqueado;
+  document.getElementById('exigir-troca').checked = !!u.exigir_troca_senha;
+  document.getElementById('titulo').innerHTML = '<i data-lucide="user-cog" aria-hidden="true"></i>Editar funcionário';
+  renderizarPermissoes(new Set(u.permissoes || acessoConfig.padroes[String(u.perfil_id)] || []));
   document.getElementById('modal').classList.remove('hidden');
+  if (window.lucide) window.lucide.createIcons();
 }
 
-async function salvar(e) {
-  e.preventDefault();
+function permissoesSelecionadas() {
+  return [...document.querySelectorAll('#permissoes input[type="checkbox"]:checked')].map(input => input.value);
+}
+
+async function salvarUsuario(event) {
+  event.preventDefault();
   const uid = document.getElementById('uid').value;
   const dados = {
-    nome: document.getElementById('nome').value,
-    login: document.getElementById('login').value,
-    nivel: document.getElementById('nivel').value,
-    ativo: document.getElementById('ativo').checked
+    nome: document.getElementById('nome').value.trim(),
+    login: document.getElementById('login').value.trim(),
+    perfil_id: Number(document.getElementById('perfil').value),
+    ativo: document.getElementById('ativo').checked,
+    bloqueado: document.getElementById('bloqueado').checked,
+    exigir_troca_senha: document.getElementById('exigir-troca').checked
   };
+  if (acessoConfig?.pode_personalizar) dados.permissoes = permissoesSelecionadas();
   const senha = document.getElementById('senha').value;
   if (senha) dados.senha = senha;
-  const url = uid ? `/api/usuarios/${uid}` : '/api/usuarios';
-  const method = uid ? 'PUT' : 'POST';
-  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
-  const d = await r.json();
-  if (d.ok) { toast('Salvo!'); fechar(); listar(); } else toast(d.erro || 'Erro', 'error');
+  const botao = document.getElementById('btn-salvar-usuario');
+  setButtonLoading(botao, true, 'Salvando...');
+  try {
+    const resposta = await fetch(uid ? `/api/usuarios/${uid}` : '/api/usuarios', {
+      method: uid ? 'PUT' : 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)
+    });
+    const resultado = await resposta.json();
+    if (!resposta.ok || !resultado.ok) return toast(resultado.erro || 'Não foi possível salvar.', 'error');
+    toast('Funcionário salvo com as permissões definidas.');
+    fecharUsuario();
+    await listarUsuarios();
+  } catch (error) {
+    toast('Falha de conexão ao salvar o funcionário.', 'error');
+  } finally {
+    setButtonLoading(botao, false);
+  }
 }
 
-async function excluir(id) {
-  if (!confirm('Desativar usuário?')) return;
-  const r = await fetch('/api/usuarios/' + id, {method: 'DELETE'});
-  const d = await r.json();
-  if (d.ok) { toast('Desativado'); listar(); } else toast(d.erro || 'Erro', 'error');
+async function desativarUsuario(id) {
+  if (!confirm('Desativar e bloquear este usuário?')) return;
+  const resposta = await fetch('/api/usuarios/' + id, {method:'DELETE'});
+  const resultado = await resposta.json();
+  if (!resposta.ok || !resultado.ok) return toast(resultado.erro || 'Não foi possível desativar.', 'error');
+  toast('Usuário desativado e bloqueado.');
+  listarUsuarios();
 }
 
-function fechar() { document.getElementById('modal').classList.add('hidden'); }
-listar();
+function fecharUsuario() { document.getElementById('modal').classList.add('hidden'); }
+document.addEventListener('keydown', event => { if (event.key === 'Escape') fecharUsuario(); });
+listarUsuarios();
 </script>
 {% endblock %}

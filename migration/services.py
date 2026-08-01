@@ -2,13 +2,13 @@ import os
 import time
 import uuid
 from datetime import datetime
-from flask import session
+from flask import current_app, session
 from database import get_db
 from auth import log_auditoria
 
 UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "static", "uploads", "migration_tmp"
+    "data", "migration_tmp"
 )
 
 
@@ -87,10 +87,7 @@ def limpar_sessao_migracao():
 
 
 def criar_backup_pre_importacao():
-    db_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "bar_adega.db"
-    )
+    db_path = current_app.config["DATABASE"]
     if not os.path.exists(db_path):
         return None, "Banco de dados não encontrado"
     ensure_upload_dir()

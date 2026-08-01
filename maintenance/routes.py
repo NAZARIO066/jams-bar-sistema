@@ -1,9 +1,9 @@
 import os
 from flask import render_template, request, jsonify, session, send_file, abort
-from auth import admin_required
+from auth import any_permission_required, permission_required
 from maintenance.backup import (
     criar_backup, listar_backups, restaurar_backup, remover_backup,
-    espaco_utilizado, obter_backup
+    espaco_utilizado, obter_backup, importar_backup, contar_backups
 )
 from maintenance.diagnostics import diagnosticar_banco, verificar_fks_orfas, estatisticas_banco, recalcular_fiados
 from maintenance.cleanup import (
@@ -17,40 +17,44 @@ from maintenance.audit import log_maintenance, listar_auditoria
 def register_maintenance_routes(app):
 
     @app.route("/manutencao")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def manutencao_dashboard():
         stats = obter_stats_dashboard()
         return render_template("manutencao.html", stats=stats)
 
     @app.route("/manutencao/backup")
-    @admin_required
+    @any_permission_required("backup.gerar", "backup.restaurar")
     def manutencao_backup():
-        backups = listar_backups()
-        return render_template("manutencao_backup.html", backups=backups)
+        backups = listar_backups(limite=100)
+        return render_template(
+            "manutencao_backup.html",
+            backups=backups,
+            total_backups=contar_backups(),
+        )
 
     @app.route("/manutencao/banco")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def manutencao_banco():
         return render_template("manutencao_banco.html")
 
     @app.route("/manutencao/limpeza")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def manutencao_limpeza():
         return render_template("manutencao_limpeza.html")
 
     @app.route("/manutencao/migracao")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def manutencao_migracao():
         backups = listar_backups()
         return render_template("manutencao_migracao.html", backups=backups)
 
     @app.route("/manutencao/auditoria")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def manutencao_auditoria():
         return render_template("manutencao_auditoria.html")
 
     @app.route("/api/manutencao/backup/criar", methods=["POST"])
-    @admin_required
+    @permission_required("backup.gerar")
     def api_manutencao_backup_criar():
         data = request.get_json(silent=True) or {}
         desc = data.get("descricao", "")
@@ -63,13 +67,42 @@ def register_maintenance_routes(app):
         return jsonify({"ok": True, "backup": resultado})
 
     @app.route("/api/manutencao/backup/listar")
-    @admin_required
+    @any_permission_required("backup.gerar", "backup.restaurar")
     def api_manutencao_backup_listar():
-        backups = listar_backups()
-        return jsonify({"ok": True, "backups": backups, "total": len(backups)})
+        limite = min(max(request.args.get("limite", 100, type=int), 1), 500)
+        offset = max(request.args.get("offset", 0, type=int), 0)
+        backups = listar_backups(limite=limite, offset=offset)
+        return jsonify({
+            "ok": True,
+            "backups": backups,
+            "total": contar_backups(),
+            "limite": limite,
+            "offset": offset,
+        })
+
+    @app.route("/api/manutencao/backup/importar", methods=["POST"])
+    @permission_required("backup.restaurar")
+    def api_manutencao_backup_importar():
+        arquivo = request.files.get("arquivo")
+        if not arquivo or not arquivo.filename:
+            return jsonify({"ok": False, "erro": "Selecione um arquivo .zip ou .db"}), 400
+        if request.content_length and request.content_length > 1024 * 1024 * 1024:
+            return jsonify({"ok": False, "erro": "O arquivo excede o limite de 1 GB"}), 413
+        uid = session.get("usuario_id")
+        uname = session.get("usuario_nome")
+        resultado, erro = importar_backup(arquivo, arquivo.filename)
+        if erro:
+            log_maintenance("Importação de backup", "erro", erro, uid, uname)
+            return jsonify({"ok": False, "erro": erro}), 400
+        log_maintenance(
+            "Backup importado", "ok",
+            f"Arquivo: {resultado['nome']} | Registros: {resultado['registros']}",
+            uid, uname,
+        )
+        return jsonify({"ok": True, "backup": resultado})
 
     @app.route("/api/manutencao/backup/restaurar", methods=["POST"])
-    @admin_required
+    @permission_required("backup.restaurar")
     def api_manutencao_backup_restaurar():
         data = request.get_json(silent=True) or {}
         nome = data.get("nome")
@@ -88,7 +121,7 @@ def register_maintenance_routes(app):
         return jsonify({"ok": True, "mensagem": f"Backup '{nome}' restaurado com sucesso", "pre_backup": pre_backup})
 
     @app.route("/api/manutencao/backup/remover", methods=["POST"])
-    @admin_required
+    @permission_required("backup.restaurar")
     def api_manutencao_backup_remover():
         data = request.get_json(silent=True) or {}
         nome = data.get("nome")
@@ -103,13 +136,13 @@ def register_maintenance_routes(app):
         return jsonify({"ok": True, "mensagem": f"Backup '{nome}' removido"})
 
     @app.route("/api/manutencao/backup/espaco")
-    @admin_required
+    @any_permission_required("backup.gerar", "backup.restaurar")
     def api_manutencao_backup_espaco():
         espaco = espaco_utilizado()
         return jsonify({"ok": True, **espaco})
 
     @app.route("/api/manutencao/backup/download/<nome>")
-    @admin_required
+    @permission_required("backup.gerar")
     def api_manutencao_backup_download(nome):
         caminho = obter_backup(nome)
         if not caminho:
@@ -120,7 +153,7 @@ def register_maintenance_routes(app):
         return send_file(caminho, as_attachment=True, download_name=nome)
 
     @app.route("/api/manutencao/banco/diagnostico")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_diagnostico():
         uid = session.get("usuario_id")
         uname = session.get("usuario_nome")
@@ -130,7 +163,7 @@ def register_maintenance_routes(app):
         return jsonify(result)
 
     @app.route("/api/manutencao/banco/integridade")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_integridade():
         uid = session.get("usuario_id")
         uname = session.get("usuario_nome")
@@ -146,19 +179,19 @@ def register_maintenance_routes(app):
         })
 
     @app.route("/api/manutencao/banco/estatisticas")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_estatisticas():
         result = estatisticas_banco()
         return jsonify(result)
 
     @app.route("/api/manutencao/banco/fks")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_fks():
         result = verificar_fks_orfas()
         return jsonify(result)
 
     @app.route("/api/manutencao/banco/recalcular_fiados", methods=["POST"])
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_recalcular_fiados():
         uid = session.get("usuario_id")
         uname = session.get("usuario_nome")
@@ -168,7 +201,7 @@ def register_maintenance_routes(app):
         return jsonify(result)
 
     @app.route("/api/manutencao/limpeza/preview", methods=["POST"])
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_limpeza_preview():
         data = request.get_json(silent=True) or {}
         acao = data.get("acao", "")
@@ -179,7 +212,7 @@ def register_maintenance_routes(app):
         return jsonify(resultado)
 
     @app.route("/api/manutencao/limpeza/confirmar", methods=["POST"])
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_limpeza_confirmar():
         data = request.get_json(silent=True) or {}
         acao = data.get("acao", "")
@@ -222,7 +255,7 @@ def register_maintenance_routes(app):
         return jsonify(resultado)
 
     @app.route("/api/manutencao/auditoria")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_auditoria():
         limite = request.args.get("limite", 100, type=int)
         offset = request.args.get("offset", 0, type=int)
@@ -230,7 +263,7 @@ def register_maintenance_routes(app):
         return jsonify({"ok": True, **dados})
 
     @app.route("/api/manutencao/stats")
-    @admin_required
+    @permission_required("manutencao.acessar")
     def api_manutencao_stats():
         stats = obter_stats_dashboard()
         return jsonify({"ok": True, **stats})

@@ -124,7 +124,7 @@
 <script>
 let abaAtual = 'vendas';
 let chartPeriodo = 'hoje';
-const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
+const isAdmin = {{ 'true' if pode('financeiro.visualizar') else 'false' }};
 
 function calcPeriodo(periodo) {
   const hoje = new Date(); hoje.setHours(0,0,0,0);

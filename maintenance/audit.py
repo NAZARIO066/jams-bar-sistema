@@ -5,7 +5,7 @@ from datetime import datetime
 
 AUDIT_DB_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "static", "uploads", "backups", "audit.db"
+    "data", "backups", "audit.db"
 )
 
 

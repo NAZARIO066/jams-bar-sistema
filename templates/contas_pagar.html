@@ -16,7 +16,7 @@
   <button onclick="carregar('pago')" class="btn btn-secondary" id="btn-pago">Pagas</button>
   <button onclick="verificarAtrasadas()" class="btn btn-danger ml-auto">🔄 Verificar Atrasadas</button>
   <button onclick="window.open('/imprimir/relatorio/contas_pagar','_blank')" class="btn btn-primary">🖨 Imprimir</button>
-  {% if session.get('usuario_nivel') == 'admin' %}
+  {% if pode('contas.alterar') %}
   <button onclick="abrir()" class="btn btn-secondary">+ Nova Conta</button>
   {% endif %}
 </div>
@@ -32,7 +32,7 @@
   <div class="modal-box">
     <div class="p-4 border-b border-ink-700 flex items-center justify-between">
       <h3 class="font-bold text-lg">Nova Conta a Pagar</h3>
-      <button onclick="fechar()" class="text-slate-400">✕</button>
+      <button type="button" onclick="fechar()" class="icon-btn" aria-label="Fechar conta"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <form class="p-4 space-y-3" onsubmit="salvar(event)">
       <div><label class="text-sm">Fornecedor *</label><input id="fornecedor" required class="w-full px-3 py-2 rounded"></div>
@@ -50,7 +50,7 @@
 {% block scripts %}
 <script>
 let filtroAtual = 'todos';
-const isAdmin = {{ 'true' if session.get('usuario_nivel') == 'admin' else 'false' }};
+const isAdmin = {{ 'true' if pode('contas.alterar') else 'false' }};
 
 async function carregar(filtro) {
   filtroAtual = filtro;

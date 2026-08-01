@@ -54,13 +54,13 @@
       <tbody>
         {% for item in itens %}
         <tr>
-          <td class="col-qty">{{ item.quantidade }}</td>
+          <td class="col-qty">{{ item.quantidade|quantidade_br }}</td>
           <td class="col-desc">
             {{ item.produto_nome }}
             {% if item.observacao %}<div class="obs">{{ item.observacao }}</div>{% endif %}
           </td>
-          <td class="col-unit">R$ {{ "%.2f"|format(item.preco_unitario) }}</td>
-          <td class="col-val">R$ {{ "%.2f"|format(item.subtotal) }}</td>
+          <td class="col-unit">{{ item.preco_unitario|moeda_brl }}</td>
+          <td class="col-val">{{ item.subtotal|moeda_brl }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -71,7 +71,7 @@
     <div class="totals">
       <div class="row total-final">
         <span>TOTAL</span>
-        <span>R$ {{ "%.2f"|format(total) }}</span>
+        <span>{{ total|moeda_brl }}</span>
       </div>
     </div>
 
@@ -81,8 +81,6 @@
     </div>
   </div>
 
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
+  <script src="{{ url_for('static', filename='js/print-helper.js') }}"></script>
 </body>
 </html>

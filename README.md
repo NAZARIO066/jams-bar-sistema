@@ -55,6 +55,7 @@ cp .env.example .env
 SECRET_KEY=seu-token-hex-aqui-com-64-caracteres
 
 FLASK_DEBUG=0
+SESSION_COOKIE_SECURE=0
 
 ADMIN_LOGIN=admin
 ADMIN_SENHA=sua-senha-administrador-aqui
@@ -89,16 +90,21 @@ Os testes utilizam um banco de dados temporário e isolado. O banco de produçã
 
 ## Backup e Restauração
 
-Via interface administrativa:
-1. Acesse `/manutencao/backup`
-2. Clique em "Criar Backup"
-3. Use "Restaurar" para recuperar um backup anterior
+Pela interface administrativa:
 
-Via linha de comando:
-```bash
-# Backup manual
-python -c "from app import app; from database import get_db; import shutil; shutil.copy(app.config['DATABASE'], 'backup_manual.db')"
-```
+1. Acesse `/manutencao/backup`.
+2. Use **Criar backup** para gerar um pacote completo `.zip`.
+3. Baixe o pacote ou mantenha-o no histórico local.
+4. Para recuperar dados, escolha **Restaurar** e confirme a operação.
+
+O pacote inclui um snapshot consistente do banco, imagens enviadas e uma
+configuração não sigilosa. Cada arquivo recebe uma assinatura SHA-256 e o
+banco passa por verificação de integridade. Antes de toda restauração, o
+sistema cria automaticamente outro pacote completo do estado atual.
+
+Backups antigos no formato `.db` continuam aceitos, mas contêm somente o
+banco. Arquivos `.zip` ou `.db` externos podem ser importados pela mesma
+tela e são validados antes de ficarem disponíveis para restauração.
 
 ## Banco de Dados
 

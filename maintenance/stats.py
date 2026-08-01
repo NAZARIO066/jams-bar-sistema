@@ -1,13 +1,11 @@
 import os
 import sqlite3
 from datetime import datetime
+from flask import current_app
 
 
 def _db_path():
-    return os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "bar_adega.db"
-    )
+    return current_app.config["DATABASE"]
 
 
 def _calcular_saude(integridade_ok, fks_orfas_total, total_backups, tamanho_mb):
@@ -93,7 +91,7 @@ def obter_stats_dashboard():
     if os.path.exists(BACKUP_DIR):
         total_size = 0
         for f in os.listdir(BACKUP_DIR):
-            if f.endswith(".db") and not f.endswith(".meta") and not f.endswith(".db-journal") and not f.endswith(".db-wal"):
+            if f.lower().endswith((".db", ".zip")):
                 fp = os.path.join(BACKUP_DIR, f)
                 if os.path.isfile(fp):
                     total_size += os.path.getsize(fp)

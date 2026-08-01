@@ -1,6 +1,6 @@
 from flask import render_template, jsonify
 from database import get_db
-from auth import login_required
+from auth import has_permission, login_required
 from datetime import date
 
 
@@ -15,6 +15,7 @@ def register_dashboard_routes(app):
     @login_required
     def api_dashboard():
         db = get_db()
+        can_view_financial = has_permission("financeiro.visualizar")
         hoje = date.today().isoformat()
         inicio_mes = date.today().replace(day=1).isoformat()
 
@@ -56,23 +57,39 @@ def register_dashboard_routes(app):
             GROUP BY dia ORDER BY dia
         """, (hoje,)).fetchall()
 
-        contas = {r["status"]: dict(r) for r in
+        contas = ({r["status"]: dict(r) for r in
             db.execute("SELECT status, COUNT(*) as c, COALESCE(SUM(valor),0) as total FROM contas_pagar WHERE status IN ('pendente','atrasado') GROUP BY status").fetchall()}
+            if can_view_financial else {})
+
+        produtos_top_result = []
+        for row in produtos_top:
+            product = dict(row)
+            if not can_view_financial:
+                product.pop("total", None)
+            produtos_top_result.append(product)
+
+        vendas_hora_result = []
+        for row in vendas_hora:
+            value = dict(row)
+            if not can_view_financial:
+                value.pop("total", None)
+            vendas_hora_result.append(value)
 
         return jsonify({
-            "faturamento_dia": vendas_dia["t"],
-            "faturamento_mes": faturamento_mes,
+            "pode_ver_financeiro": can_view_financial,
+            "faturamento_dia": vendas_dia["t"] if can_view_financial else None,
+            "faturamento_mes": faturamento_mes if can_view_financial else None,
             "total_pedidos": vendas_dia["c"],
             "mesas_ocupadas": status_mesas.get("ocupada", 0),
             "mesas_livres": status_mesas.get("disponivel", 0),
             "mesas_reservadas": status_mesas.get("reservada", 0),
             "total_mesas": sum(status_mesas.values()),
-            "ticket_medio": (vendas_dia["t"] / vendas_dia["c"]) if vendas_dia["c"] else 0,
+            "ticket_medio": ((vendas_dia["t"] / vendas_dia["c"]) if vendas_dia["c"] else 0) if can_view_financial else None,
             "produtos_vendidos": produtos_vendidos,
             "estoque_critico": estoque_critico,
-            "produtos_top": [dict(r) for r in produtos_top],
-            "vendas_hora": [dict(r) for r in vendas_hora],
-            "vendas_7dias": [dict(r) for r in vendas_7dias],
+            "produtos_top": produtos_top_result,
+            "vendas_hora": vendas_hora_result,
+            "vendas_7dias": [dict(r) for r in vendas_7dias] if can_view_financial else [],
             "ocupacao": [{"status": k, "c": v} for k, v in status_mesas.items()],
             "contas_pagar_pendentes": contas.get("pendente", {"c": 0, "total": 0}),
             "contas_pagar_atrasadas": contas.get("atrasado", {"c": 0, "total": 0}),

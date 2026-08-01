@@ -7,13 +7,6 @@ from app import app
 from database import get_db
 
 
-@pytest.fixture
-def client():
-    app.config["TESTING"] = True
-    with app.test_client() as c:
-        yield c
-
-
 def _reseed(client):
     _login(client)
     from werkzeug.security import generate_password_hash
@@ -420,8 +413,8 @@ class TestAutorizacaoPermissoes:
 
     def test_funcionario_caixa(self, client):
         self._login_funcionario(client)
-        assert client.get("/api/caixa/status").status_code == 200
-        assert client.get("/api/caixa/movimentacoes").status_code == 200
+        assert client.get("/api/caixa/status").status_code in (403, 302)
+        assert client.get("/api/caixa/movimentacoes").status_code in (403, 302)
         assert client.post("/api/caixa/abrir", json={"valor_inicial": 100}).status_code in (403, 302)
         assert client.post("/api/caixa/fechar", json={"valor_final": 0}).status_code in (403, 302)
         assert client.post("/api/caixa/suprimento", json={"valor": 50, "motivo": "X"}).status_code in (403, 302)
@@ -439,26 +432,26 @@ class TestAutorizacaoPermissoes:
 
     def test_funcionario_contas(self, client):
         self._login_funcionario(client)
-        assert client.get("/api/contas_pagar").status_code == 200
-        assert client.get("/api/contas_pagar/verificar_atrasadas").status_code == 200
+        assert client.get("/api/contas_pagar").status_code in (403, 302)
+        assert client.get("/api/contas_pagar/verificar_atrasadas").status_code in (403, 302)
         assert client.post("/api/contas_pagar", json={"fornecedor": "F", "descricao": "D", "valor": 100, "vencimento": "2026-12-31"}).status_code in (403, 302)
         assert client.post("/api/contas_pagar/1/pagar").status_code in (403, 302)
         assert client.delete("/api/contas_pagar/1").status_code in (403, 302)
 
     def test_funcionario_estoque(self, client):
         self._login_funcionario(client)
-        assert client.get("/api/estoque").status_code == 200
-        assert client.get("/api/movimentacoes").status_code == 200
+        assert client.get("/api/estoque").status_code in (403, 302)
+        assert client.get("/api/movimentacoes").status_code in (403, 302)
         assert client.post("/api/estoque/entrada", json={"produto_id": 1, "quantidade": 10}).status_code in (403, 302)
         assert client.post("/api/estoque/saida", json={"produto_id": 1, "quantidade": 1, "motivo": "Ajuste"}).status_code in (403, 302)
 
     def test_funcionario_relatorios(self, client):
         self._login_funcionario(client)
-        assert client.get("/api/relatorios/vendas").status_code == 200
-        assert client.get("/api/relatorios/produtos").status_code == 200
-        assert client.get("/api/relatorios/vendas_categoria").status_code == 200
-        assert client.get("/api/relatorios/vendas_garcom").status_code == 200
-        assert client.get("/api/relatorios/mesas").status_code == 200
+        assert client.get("/api/relatorios/vendas").status_code in (403, 302)
+        assert client.get("/api/relatorios/produtos").status_code in (403, 302)
+        assert client.get("/api/relatorios/vendas_categoria").status_code in (403, 302)
+        assert client.get("/api/relatorios/vendas_garcom").status_code in (403, 302)
+        assert client.get("/api/relatorios/mesas").status_code in (403, 302)
         assert client.get("/api/relatorios/fluxo_caixa").status_code in (403, 302)
         assert client.get("/api/relatorios/sangrias").status_code in (403, 302)
         assert client.get("/api/relatorios/suprimentos").status_code in (403, 302)
@@ -480,7 +473,7 @@ class TestAutorizacaoPermissoes:
         assert client.get("/api/auditoria").status_code in (403, 302)
         assert client.get("/api/backup").status_code in (403, 302)
         assert client.post("/api/empresa", json={"razao_social": "X"}).status_code in (403, 302)
-        assert client.get("/api/empresa").status_code == 200
+        assert client.get("/api/empresa").status_code in (403, 302)
         assert client.delete("/api/config/logo").status_code in (403, 302)
 
     def test_funcionario_produtos(self, client):
@@ -1956,6 +1949,66 @@ class TestMaintenanceBackup:
         assert "backup" in d
         assert d["backup"]["tamanho_mb"] >= 0
 
+    def test_backup_completo_contem_banco_manifesto_e_configuracao(self, client):
+        import zipfile
+        self._login_admin(client)
+        r = client.post("/api/manutencao/backup/criar",
+                        json={"descricao": "Pacote completo"})
+        assert r.status_code == 200
+        nome = r.get_json()["backup"]["nome"]
+        assert nome.endswith(".zip")
+        download = client.get(f"/api/manutencao/backup/download/{nome}")
+        with zipfile.ZipFile(io.BytesIO(download.data)) as pacote:
+            nomes = pacote.namelist()
+            assert "manifest.json" in nomes
+            assert "database/bar_adega.db" in nomes
+            assert "config/config_snapshot.json" in nomes
+            manifesto = json.loads(pacote.read("manifest.json"))
+            assert manifesto["formato"] == "jams-adega-backup"
+            assert manifesto["banco"]["integridade"] == "ok"
+
+    def test_importar_backup_completo_validado(self, client):
+        self._login_admin(client)
+        criado = client.post("/api/manutencao/backup/criar", json={"descricao": "Importável"})
+        nome = criado.get_json()["backup"]["nome"]
+        dados = client.get(f"/api/manutencao/backup/download/{nome}").data
+        r = client.post(
+            "/api/manutencao/backup/importar",
+            data={"arquivo": (io.BytesIO(dados), "copia.zip")},
+            content_type="multipart/form-data",
+        )
+        assert r.status_code == 200
+        resposta = r.get_json()
+        assert resposta["ok"] is True
+        assert resposta["backup"]["integridade"] == "ok"
+        assert resposta["backup"]["registros"] > 0
+
+    def test_importar_backup_corrompido_e_recusado(self, client):
+        self._login_admin(client)
+        r = client.post(
+            "/api/manutencao/backup/importar",
+            data={"arquivo": (io.BytesIO(b"nao e um zip"), "invalido.zip")},
+            content_type="multipart/form-data",
+        )
+        assert r.status_code == 400
+        assert r.get_json()["ok"] is False
+
+    def test_restauracao_completa_recupera_imagem(self, client):
+        self._login_admin(client)
+        uploads = app.config["BACKUP_UPLOADS_DIR"]
+        imagem = os.path.join(uploads, "produtos", "produto_teste.png")
+        os.makedirs(os.path.dirname(imagem), exist_ok=True)
+        conteudo = b"imagem-de-teste-do-backup"
+        with open(imagem, "wb") as arquivo:
+            arquivo.write(conteudo)
+        criado = client.post("/api/manutencao/backup/criar", json={"descricao": "Com imagem"})
+        nome = criado.get_json()["backup"]["nome"]
+        os.remove(imagem)
+        restaurado = client.post("/api/manutencao/backup/restaurar", json={"nome": nome})
+        assert restaurado.status_code == 200
+        with open(imagem, "rb") as arquivo:
+            assert arquivo.read() == conteudo
+
     def test_listar_backups(self, client):
         self._login_admin(client)
         client.post("/api/manutencao/backup/criar", json={"descricao": "test"})
@@ -2488,11 +2541,7 @@ class TestAuditoriaManutencao:
 
 
 class TestLimpezaExecucao:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2581,11 +2630,7 @@ class TestLimpezaExecucao:
 
 
 class TestLimpezaSeguranca:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2664,11 +2709,7 @@ class TestLimpezaSeguranca:
 
 
 class TestLimpezaBackup:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2701,11 +2742,7 @@ class TestLimpezaBackup:
 
 
 class TestLimpezaIntegridade:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2742,11 +2779,7 @@ class TestLimpezaIntegridade:
 
 
 class TestLimpezaAuditoria:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2786,11 +2819,7 @@ class TestLimpezaAuditoria:
 
 
 class TestLimpezaRelatorio:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
     _RESET = "RESETAR SISTEMA"
 
@@ -2842,11 +2871,7 @@ class TestLimpezaRelatorio:
 
 
 class TestLimpezaRollback:
-<<<<<<< HEAD
-    _SENHA = "Admin@2026#Jam's"
-=======
     _SENHA = os.environ["ADMIN_SENHA"]
->>>>>>> 09d5584 (fix: remove hardcoded passwords, isolate tests from real DB, add .env.example)
     _CONF = "CONFIRMAR LIMPEZA"
 
     def _login_admin(self, client):

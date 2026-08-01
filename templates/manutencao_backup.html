@@ -1,67 +1,109 @@
 {% extends 'base.html' %}
 {% block title %}Manutenção — Backup{% endblock %}
-{% block page_title %}🛠 Backup{% endblock %}
+{% block page_title %}Backups e restauração{% endblock %}
 {% block content %}
-<div class="max-w-5xl mx-auto">
-  <div class="flex items-center justify-between mb-6">
+<div class="max-w-6xl mx-auto space-y-6">
+  <div class="flex items-start justify-between gap-4 flex-wrap">
     <div>
-      <h2 class="text-lg font-bold" style="color:#D4AF37;">Gerenciar Backups</h2>
-      <p class="text-sm" style="color:#999;">Crie, restaure, baixe e gerencie backups do banco de dados.</p>
+      <p class="eyebrow">Proteção dos dados</p>
+      <h2 class="text-2xl font-bold">Central de backups</h2>
+      <p class="text-sm text-muted mt-1">Banco, imagens e configurações não sigilosas reunidos em um pacote validado.</p>
     </div>
-    <a href="/manutencao" class="btn btn-secondary">← Voltar</a>
+    <a href="{{ url_for('manutencao_dashboard') if pode('manutencao.acessar') else url_for('dashboard') }}" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Voltar</a>
   </div>
 
-  <!-- Criar Backup -->
-  <div class="card mb-6">
-    <h3 class="font-bold mb-3" style="color:#D4AF37;">Criar Backup</h3>
-    <p class="text-sm mb-4" style="color:#999;">Crie um backup completo do banco de dados atual.</p>
-    <div class="flex gap-3">
-      <input id="backup-desc" class="form-input flex-1" placeholder="Descrição (opcional)" style="max-width:300px;">
-      <button onclick="criarBackup()" class="btn btn-primary" id="btn-criar-backup">💾 Criar Backup</button>
-    </div>
-    <div id="backup-criar-status" class="mt-3 text-sm"></div>
-  </div>
-
-  <!-- Espaço -->
-  <div class="card mb-6">
-    <div class="flex items-center gap-3">
-      <span style="font-size:1.5rem;">💽</span>
-      <div>
-        <div class="font-bold" style="color:#fff;">Espaço Utilizado</div>
-        <div class="text-sm" style="color:#999;" id="espaco-info">Carregando...</div>
+  <div class="grid lg:grid-cols-2 gap-5">
+    {% if pode('backup.gerar') %}<section class="card">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="icon-shell"><i data-lucide="archive"></i></span>
+        <div>
+          <h3 class="font-bold">Criar cópia completa</h3>
+          <p class="text-sm text-muted">Gera um arquivo ZIP e verifica a integridade automaticamente.</p>
+        </div>
       </div>
-    </div>
+      <label class="form-label" for="backup-desc">Descrição opcional</label>
+      <div class="flex gap-3 flex-wrap">
+        <input id="backup-desc" class="form-input flex-1" placeholder="Ex.: fechamento de julho" style="min-width:220px;">
+        <button onclick="criarBackup()" class="btn btn-primary" id="btn-criar-backup">
+          <i data-lucide="database-backup"></i> Criar backup
+        </button>
+      </div>
+      <div id="backup-criar-status" class="mt-3 text-sm" role="status"></div>
+    </section>{% endif %}
+
+    {% if pode('backup.restaurar') %}<section class="card">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="icon-shell"><i data-lucide="file-up"></i></span>
+        <div>
+          <h3 class="font-bold">Importar backup existente</h3>
+          <p class="text-sm text-muted">Aceita o pacote completo .zip e o formato antigo .db.</p>
+        </div>
+      </div>
+      <label class="form-label" for="backup-arquivo">Arquivo de backup</label>
+      <div class="flex gap-3 flex-wrap">
+        <input id="backup-arquivo" type="file" accept=".zip,.db,application/zip" class="form-input flex-1" style="min-width:220px;">
+        <button onclick="importarBackup()" class="btn btn-secondary" id="btn-importar-backup">
+          <i data-lucide="upload"></i> Validar e importar
+        </button>
+      </div>
+      <div id="backup-importar-status" class="mt-3 text-sm" role="status"></div>
+    </section>{% endif %}
   </div>
 
-  <!-- Histórico -->
-  <div class="card">
-    <h3 class="font-bold mb-3" style="color:#D4AF37;">Histórico de Backups</h3>
+  <section class="card flex items-center gap-4">
+    <span class="icon-shell"><i data-lucide="hard-drive"></i></span>
+    <div>
+      <div class="font-bold">Espaço utilizado</div>
+      <div class="text-sm text-muted" id="espaco-info">Carregando...</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="flex items-center justify-between gap-3 mb-4">
+      <div>
+        <h3 class="font-bold">Histórico de backups</h3>
+        <p class="text-sm text-muted">A restauração sempre cria uma nova cópia completa do estado atual.</p>
+      </div>
+      <span class="badge badge-info">{{ total_backups }} arquivo(s)</span>
+    </div>
+    {% if total_backups > backups|length %}
+    <div class="message message-warning mb-4">
+      <i data-lucide="info"></i>
+      <span>Exibindo os {{ backups|length }} backups mais recentes de {{ total_backups }}. Os demais continuam preservados no histórico.</span>
+    </div>
+    {% endif %}
     {% if backups %}
     <div class="overflow-x-auto">
       <table class="table">
         <thead>
           <tr>
-            <th>Nome</th>
+            <th>Arquivo</th>
             <th>Data</th>
+            <th>Formato</th>
             <th>Tamanho</th>
             <th>Descrição</th>
-            <th>Usuário</th>
-            <th>Ações</th>
+            <th>Responsável</th>
+            <th class="text-right">Ações</th>
           </tr>
         </thead>
         <tbody>
           {% for b in backups %}
           <tr>
-            <td style="font-family:monospace;font-size:0.8rem;">{{ b.nome }}</td>
+            <td><span class="font-mono text-xs">{{ b.nome }}</span></td>
             <td>{{ b.data }}</td>
-            <td>{{ b.tamanho_mb }} MB</td>
-            <td style="color:#999;">{{ b.descricao or '—' }}</td>
-            <td style="color:#999;">{{ b.usuario or '—' }}</td>
             <td>
-              <div class="flex gap-1">
-                <a href="/api/manutencao/backup/download/{{ b.nome }}" class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem;" title="Download">⬇</a>
-                <button onclick="confirmarRestauracao('{{ b.nome }}')" class="btn btn-primary" style="padding:0.3rem 0.6rem;font-size:0.75rem;" title="Restaurar">↺</button>
-                <button onclick="removerBackup('{{ b.nome }}')" class="btn btn-danger" style="padding:0.3rem 0.6rem;font-size:0.75rem;" title="Remover">🗑</button>
+              <span class="badge {{ 'badge-success' if b.nome.endswith('.zip') else 'badge-warning' }}">
+                {{ b.formato }}
+              </span>
+            </td>
+            <td>{{ b.tamanho_mb }} MB</td>
+            <td class="text-muted">{{ b.descricao or '—' }}</td>
+            <td class="text-muted">{{ b.usuario or '—' }}</td>
+            <td>
+              <div class="flex gap-1 justify-end">
+                {% if pode('backup.gerar') %}<a href="/api/manutencao/backup/download/{{ b.nome|urlencode }}" class="btn btn-secondary btn-icon" title="Baixar {{ b.nome }}" aria-label="Baixar {{ b.nome }}"><i data-lucide="download"></i></a>{% endif %}
+                {% if pode('backup.restaurar') %}<button onclick='confirmarRestauracao({{ b.nome|tojson }})' class="btn btn-primary btn-icon" title="Restaurar {{ b.nome }}" aria-label="Restaurar {{ b.nome }}"><i data-lucide="rotate-ccw"></i></button>
+                <button onclick='removerBackup({{ b.nome|tojson }})' class="btn btn-danger btn-icon" title="Remover {{ b.nome }}" aria-label="Remover {{ b.nome }}"><i data-lucide="trash-2"></i></button>{% endif %}
               </div>
             </td>
           </tr>
@@ -70,41 +112,54 @@
       </table>
     </div>
     {% else %}
-    <div class="text-center py-8" style="color:#666;">
-      <div style="font-size:2rem;margin-bottom:0.5rem;">📦</div>
-      <p>Nenhum backup encontrado.</p>
+    <div class="empty-state">
+      <span class="empty-state-icon"><i data-lucide="archive-x"></i></span>
+      <h3>Nenhum backup salvo</h3>
+      <p>Crie a primeira cópia completa para proteger os dados da adega.</p>
     </div>
     {% endif %}
-  </div>
+  </section>
 
-  <!-- Modal de Confirmação de Restauração -->
-  <div id="modal-restaurar" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;">
-    <div class="card" style="max-width:480px;width:100%;margin:1rem;">
-      <h3 class="font-bold mb-3" style="color:#fbbf24;">⚠️ Confirmar Restauração</h3>
-      <p class="text-sm mb-4" style="color:#ccc;">Tem certeza que deseja restaurar o backup <strong id="modal-backup-nome"></strong>?</p>
-      <div class="p-3 rounded-lg text-sm mb-4" style="background:rgba(202,138,4,0.12);color:#fbbf24;border:1px solid rgba(202,138,4,0.2);">
-        Um backup automático do banco atual será criado antes da restauração. Se a restauração falhar, o sistema será restaurado automaticamente.
+  {% if pode('backup.restaurar') %}<div id="modal-restaurar" class="hidden modal-bg" role="dialog" aria-modal="true" aria-labelledby="titulo-restaurar">
+    <div class="card" style="max-width:500px;width:calc(100% - 2rem);">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="icon-shell icon-shell-warning"><i data-lucide="shield-alert"></i></span>
+        <h3 id="titulo-restaurar" class="font-bold">Confirmar restauração</h3>
+      </div>
+      <p class="text-sm mb-4 text-muted">O sistema será restaurado com o arquivo <strong id="modal-backup-nome"></strong>.</p>
+      <div class="message message-warning mb-4">
+        <i data-lucide="shield-check"></i>
+        <span>Antes da troca, o estado atual completo será salvo. Banco e imagens do pacote serão validados novamente.</span>
       </div>
       <div class="flex gap-3 justify-end">
         <button onclick="fecharModalRestaurar()" class="btn btn-secondary">Cancelar</button>
-        <button onclick="executarRestauracao()" class="btn btn-danger" id="btn-executar-restaurar">↺ Confirmar Restauração</button>
+        <button onclick="executarRestauracao()" class="btn btn-danger" id="btn-executar-restaurar"><i data-lucide="rotate-ccw"></i> Restaurar</button>
       </div>
-      <div id="restaurar-status" class="mt-3 text-sm"></div>
+      <div id="restaurar-status" class="mt-3 text-sm" role="status"></div>
     </div>
-  </div>
+  </div>{% endif %}
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 let _restoreNome = '';
 
+function statusHtml(tipo, mensagem) {
+  const icone = tipo === 'success' ? 'circle-check' : tipo === 'error' ? 'circle-x' : 'loader-circle';
+  return `<span class="inline-flex items-center gap-2 status-${tipo}"><i data-lucide="${icone}"></i>${mensagem}</span>`;
+}
+
+function atualizarIcones() {
+  if (window.lucide) window.lucide.createIcons();
+}
+
 async function criarBackup() {
   const btn = document.getElementById('btn-criar-backup');
   const status = document.getElementById('backup-criar-status');
   const desc = document.getElementById('backup-desc').value;
-  btn.disabled = true;
-  btn.textContent = '⏳ Criando...';
-  status.innerHTML = '<span style="color:#999;">Criando backup...</span>';
+  setButtonLoading(btn, true, 'Criando pacote...');
+  status.innerHTML = statusHtml('loading', 'Copiando e validando os dados...');
+  atualizarIcones();
   try {
     const r = await fetch('/api/manutencao/backup/criar', {
       method: 'POST',
@@ -112,33 +167,59 @@ async function criarBackup() {
       body: JSON.stringify({descricao: desc})
     });
     const d = await r.json();
-    if (d.ok) {
-      status.innerHTML = '<span style="color:#4ade80;">✅ Backup criado: ' + d.backup.nome + ' (' + d.backup.tamanho_mb + ' MB)</span>';
-      document.getElementById('backup-desc').value = '';
-      setTimeout(() => location.reload(), 1500);
-    } else {
-      status.innerHTML = '<span style="color:#f87171;">❌ ' + (d.erro || 'Erro ao criar backup') + '</span>';
-    }
-  } catch(e) {
-    status.innerHTML = '<span style="color:#f87171;">❌ Erro de conexão</span>';
+    if (!r.ok || !d.ok) throw new Error(d.erro || 'Não foi possível criar o backup');
+    status.innerHTML = statusHtml('success', `Backup completo criado: ${d.backup.nome} (${d.backup.tamanho_mb} MB)`);
+    document.getElementById('backup-desc').value = '';
+    atualizarIcones();
+    setTimeout(() => location.reload(), 1200);
+  } catch (e) {
+    status.innerHTML = statusHtml('error', e.message || 'Falha de conexão');
+    atualizarIcones();
+  } finally {
+    setButtonLoading(btn, false);
   }
-  btn.disabled = false;
-  btn.textContent = '💾 Criar Backup';
+}
+
+async function importarBackup() {
+  const input = document.getElementById('backup-arquivo');
+  const btn = document.getElementById('btn-importar-backup');
+  const status = document.getElementById('backup-importar-status');
+  if (!input.files.length) {
+    status.innerHTML = statusHtml('error', 'Selecione um arquivo .zip ou .db.');
+    atualizarIcones();
+    return;
+  }
+  const form = new FormData();
+  form.append('arquivo', input.files[0]);
+  setButtonLoading(btn, true, 'Validando...');
+  status.innerHTML = statusHtml('loading', 'Verificando estrutura, assinaturas e integridade...');
+  atualizarIcones();
+  try {
+    const r = await fetch('/api/manutencao/backup/importar', {method: 'POST', body: form});
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.erro || 'Backup recusado');
+    status.innerHTML = statusHtml('success', `Importado com segurança: ${d.backup.registros} registros e ${d.backup.imagens} imagem(ns).`);
+    atualizarIcones();
+    setTimeout(() => location.reload(), 1400);
+  } catch (e) {
+    status.innerHTML = statusHtml('error', e.message || 'Falha de conexão');
+    atualizarIcones();
+  } finally {
+    setButtonLoading(btn, false);
+  }
 }
 
 async function removerBackup(nome) {
-  if (!confirm('Remover backup "' + nome + '"? Esta ação não pode ser desfeita.')) return;
+  if (!confirm(`Remover o backup "${nome}"? Esta ação não pode ser desfeita.`)) return;
   try {
     const r = await fetch('/api/manutencao/backup/remover', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({nome: nome})
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nome})
     });
     const d = await r.json();
-    if (d.ok) location.reload();
-    else alert(d.erro || 'Erro ao remover');
-  } catch(e) {
-    alert('Erro de conexão');
+    if (!r.ok || !d.ok) throw new Error(d.erro || 'Erro ao remover');
+    location.reload();
+  } catch (e) {
+    toast(e.message || 'Falha de conexão', 'error');
   }
 }
 
@@ -157,43 +238,38 @@ function fecharModalRestaurar() {
 async function executarRestauracao() {
   const btn = document.getElementById('btn-executar-restaurar');
   const status = document.getElementById('restaurar-status');
-  btn.disabled = true;
-  btn.textContent = '⏳ Restaurando...';
-  status.innerHTML = '<span style="color:#fbbf24;">Restaurando backup...</span>';
+  setButtonLoading(btn, true, 'Restaurando...');
+  status.innerHTML = statusHtml('loading', 'Criando proteção e restaurando o pacote...');
+  atualizarIcones();
   try {
     const r = await fetch('/api/manutencao/backup/restaurar', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({nome: _restoreNome})
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({nome: _restoreNome})
     });
     const d = await r.json();
-    if (d.ok) {
-      status.innerHTML = '<span style="color:#4ade80;">✅ ' + d.mensagem + '</span>';
-      if (d.pre_backup) {
-        status.innerHTML += '<br><span style="color:#999;font-size:0.8rem;">Backup de segurança: ' + d.pre_backup + '</span>';
-      }
-      setTimeout(() => location.reload(), 2000);
-    } else {
-      status.innerHTML = '<span style="color:#f87171;">❌ ' + (d.erro || 'Erro ao restaurar') + '</span>';
-    }
-  } catch(e) {
-    status.innerHTML = '<span style="color:#f87171;">❌ Erro de conexão</span>';
+    if (!r.ok || !d.ok) throw new Error(d.erro || 'Erro ao restaurar');
+    status.innerHTML = statusHtml('success', d.mensagem);
+    if (d.pre_backup) status.innerHTML += `<div class="text-muted mt-1">Cópia de segurança: ${d.pre_backup}</div>`;
+    atualizarIcones();
+    setTimeout(() => location.reload(), 1600);
+  } catch (e) {
+    status.innerHTML = statusHtml('error', e.message || 'Falha de conexão');
+    atualizarIcones();
+  } finally {
+    setButtonLoading(btn, false);
   }
-  btn.disabled = false;
-  btn.textContent = '↺ Confirmar Restauração';
 }
 
 async function carregarEspaco() {
   try {
     const r = await fetch('/api/manutencao/backup/espaco');
     const d = await r.json();
-    if (d.ok) {
-      document.getElementById('espaco-info').textContent = d.mb + ' MB utilizados em ' + ({{ backups|length }}) + ' backup(s)';
-    }
-  } catch(e) {
-    document.getElementById('espaco-info').textContent = 'Erro ao carregar';
+    if (!r.ok || !d.ok) throw new Error();
+    document.getElementById('espaco-info').textContent = `${d.mb} MB em {{ total_backups }} backup(s)`;
+  } catch (e) {
+    document.getElementById('espaco-info').textContent = 'Não foi possível calcular o espaço agora.';
   }
 }
+
 carregarEspaco();
 </script>
 {% endblock %}

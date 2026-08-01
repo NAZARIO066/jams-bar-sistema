@@ -1,6 +1,6 @@
 from flask import jsonify
 from database import get_db
-from auth import admin_required
+from auth import permission_required
 from services.migration_service import (
     validar_foreign_keys_orfas,
     validar_formato_timestamps,
@@ -15,7 +15,7 @@ from services.migration_service import (
 def register_migration_routes(app):
 
     @app.route("/api/migracao/validar", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_validar():
         db = get_db()
         resultados = executar_antes_importacao(db)
@@ -35,7 +35,7 @@ def register_migration_routes(app):
         })
 
     @app.route("/api/migracao/corrigir_saldo", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_corrigir_saldo():
         db = get_db()
         count = corrigir_saldo_devedor(db)
@@ -43,7 +43,7 @@ def register_migration_routes(app):
         return jsonify({"ok": True, "clientes_corrigidos": count})
 
     @app.route("/api/migracao/corrigir_empresa", methods=["POST"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_corrigir_empresa():
         db = get_db()
         info = validar_empresa_singleton(db)
@@ -53,7 +53,7 @@ def register_migration_routes(app):
         return jsonify({"ok": True, "empresa_duplicada_antes": info["duplicatas"]})
 
     @app.route("/api/migracao/status", methods=["GET"])
-    @admin_required
+    @permission_required("migracao.acessar")
     def api_migracao_status():
         db = get_db()
         tabelas = {}

@@ -5,18 +5,18 @@
 <div class="flex justify-between items-center mb-4">
   <input id="busca" placeholder="🔍 Buscar..." class="px-3 py-2 rounded w-64" oninput="listar()">
   <div class="flex gap-2">
-    <button onclick="window.open('/imprimir/relatorio/produtos_cadastro','_blank')" class="btn btn-primary">🖨 Imprimir</button>
-    {% if session.get('usuario_nivel') == 'admin' %}
+    {% if pode('relatorios.visualizar') and pode('financeiro.visualizar') and pode('impressao.imprimir') %}<button onclick="window.open('/imprimir/relatorio/produtos_cadastro','_blank')" class="btn btn-primary">🖨 Imprimir</button>{% endif %}
+    {% if pode('produtos.cadastrar') %}
     <button onclick="abrirCategoria()" class="btn btn-secondary">+ Categoria</button>
     {% endif %}
-    {% if session.get('usuario_nivel') == 'admin' %}
+    {% if pode('produtos.cadastrar') %}
     <button onclick="abrirProduto()" class="btn btn-secondary">+ Produto</button>
     {% endif %}
   </div>
 </div>
 <div class="card overflow-auto">
   <table class="table">
-    <thead><tr><th>Nome</th><th>Categoria</th><th>Cód. Barras</th><th>Preço</th><th>Estoque</th><th>Mín</th><th>Status</th>{% if session.get('usuario_nivel') == 'admin' %}<th></th>{% endif %}</tr></thead>
+    <thead><tr><th>Nome</th><th>Categoria</th><th>Cód. Barras</th><th>Preço</th><th>Estoque</th><th>Mín</th><th>Status</th>{% if pode('produtos.alterar') %}<th></th>{% endif %}</tr></thead>
     <tbody id="lista"></tbody>
   </table>
 </div>
@@ -25,7 +25,7 @@
   <div class="modal-box">
     <div class="p-4 border-b border-ink-700 flex items-center justify-between">
       <h3 id="modal-titulo" class="font-bold text-lg">Produto</h3>
-      <button onclick="fecharModal()" class="text-slate-400">✕</button>
+      <button type="button" onclick="fecharModal()" class="icon-btn" aria-label="Fechar produto"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <form id="form" class="p-4 space-y-3" onsubmit="salvar(event)">
       <input type="hidden" id="pid">
@@ -54,7 +54,7 @@
   <div class="modal-box" style="max-width:24rem">
     <div class="p-4 border-b border-ink-700 flex items-center justify-between">
       <h3 class="font-bold text-lg">Nova Categoria</h3>
-      <button onclick="fecharModalCat()" class="text-slate-400">✕</button>
+      <button type="button" onclick="fecharModalCat()" class="icon-btn" aria-label="Fechar categoria"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
     <form class="p-4 space-y-3" onsubmit="salvarCategoria(event)">
       <div><label class="text-sm">Nome da Categoria *</label><input id="cat-nome" required class="w-full px-3 py-2 rounded" placeholder="Ex: Bebidas"></div>
@@ -79,7 +79,7 @@ async function listar() {
       <td><span class="${p.estoque<=0?'text-red-400 font-bold':p.estoque<=p.estoque_minimo?'text-yellow-400':'text-green-400'}">${p.estoque} ${p.unidade}</span></td>
       <td>${p.estoque_minimo}</td>
       <td>${p.ativo?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-gray">Inativo</span>'}</td>
-      {% if session.get('usuario_nivel') == 'admin' %}
+      {% if pode('produtos.alterar') %}
       <td class="text-right">
         <button onclick="editar(${p.id})" class="text-blue-400 mr-2">✏</button>
         <button onclick="excluir(${p.id})" class="text-red-400">🗑</button>

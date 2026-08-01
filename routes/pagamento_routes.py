@@ -1,14 +1,15 @@
 import os
 from flask import request, jsonify, session, render_template
 from database import get_db
-from auth import login_required, admin_required
+from auth import any_permission_required, has_permission, log_auditoria, permission_required
 from datetime import datetime
+from services.fiado_service import tem_fiado_vencido
 
 
 def register_pagamento_routes(app):
 
     @app.route("/api/comanda/<int:comanda_id>/pagamento_parcial", methods=["POST"])
-    @login_required
+    @permission_required("mesas.fechar", "vendas.fechar")
     def pagamento_parcial(comanda_id):
         db = get_db()
         data = request.json or {}
@@ -16,7 +17,17 @@ def register_pagamento_routes(app):
         forma = data.get("forma_pagamento", "Dinheiro")
         nome_pessoa = (data.get("nome_pessoa") or "").strip() or None
         cliente_id = data.get("cliente_id")
-        desconto = float(data.get("desconto", 0))
+        try:
+            desconto = float(data.get("desconto", 0))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "erro": "Desconto inválido"}), 400
+        if desconto < 0:
+            return jsonify({"ok": False, "erro": "Desconto não pode ser negativo"}), 400
+        if desconto > 0 and not has_permission("vendas.desconto"):
+            log_auditoria("ACESSO_NEGADO", f"Tentativa de desconto em pagamento parcial da comanda {comanda_id}")
+            return jsonify({"ok": False, "erro": "Você não tem permissão para conceder desconto."}), 403
+        if forma not in {"Dinheiro", "PIX", "Crédito", "Débito", "Fiado"}:
+            return jsonify({"ok": False, "erro": "Forma de pagamento inválida"}), 400
         if not itens_pagamento:
             return jsonify({"ok": False, "erro": "Nenhum item selecionado"}), 400
         comanda = db.execute(
@@ -32,6 +43,8 @@ def register_pagamento_routes(app):
             ).fetchone()
             if not cli:
                 return jsonify({"ok": False, "erro": "Cliente inválido"}), 400
+            if tem_fiado_vencido(cliente_id):
+                return jsonify({"ok": False, "erro": "Cliente com fiado vencido"}), 400
         total_pago = 0
         itens_processados = []
         for item_pag in itens_pagamento:
@@ -64,8 +77,12 @@ def register_pagamento_routes(app):
             )
         if total_pago <= 0:
             return jsonify({"ok": False, "erro": "Nenhum item disponível para pagamento"}), 400
+        if desconto > total_pago:
+            return jsonify({"ok": False, "erro": "Desconto não pode ser maior que o pagamento"}), 400
         if desconto > 0:
-            total_pago = max(0, total_pago - desconto)
+            total_pago -= desconto
+        if forma == "Fiado" and cli["limite_fiado"] > 0 and cli["saldo_devedor"] + total_pago > cli["limite_fiado"]:
+            return jsonify({"ok": False, "erro": "Limite de fiado excedido"}), 400
         cur = db.execute(
             "INSERT INTO pagamentos_parciais "
             "(comanda_id, usuario_id, valor_total, desconto, forma_pagamento, nome_pessoa, cliente_id) "
@@ -122,7 +139,7 @@ def register_pagamento_routes(app):
         )
 
     @app.route("/api/comanda/<int:comanda_id>/pagamentos")
-    @login_required
+    @permission_required("mesas.acessar")
     def pagamentos_comanda(comanda_id):
         db = get_db()
         pagamentos = db.execute(
@@ -162,7 +179,7 @@ def register_pagamento_routes(app):
         )
 
     @app.route("/api/config/acesso_rapido", methods=["GET"])
-    @login_required
+    @permission_required("pdv.acessar")
     def get_acesso_rapido():
         db = get_db()
         config = db.execute(
@@ -188,7 +205,7 @@ def register_pagamento_routes(app):
         return jsonify({"modo": config["modo"], "produtos_fixos": produtos_fixos})
 
     @app.route("/api/config/acesso_rapido", methods=["POST"])
-    @admin_required
+    @permission_required("configuracoes.acessar")
     def save_acesso_rapido():
         db = get_db()
         data = request.json or {}
@@ -210,7 +227,7 @@ def register_pagamento_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/mesas/disponiveis")
-    @login_required
+    @permission_required("mesas.acessar")
     def mesas_disponiveis():
         db = get_db()
         mesas = db.execute(
@@ -238,7 +255,7 @@ def register_pagamento_routes(app):
         return datetime.now().strftime("%d/%m/%Y %H:%M")
 
     @app.route("/imprimir/comanda/<int:comanda_id>")
-    @login_required
+    @any_permission_required("impressao.imprimir", "impressao.reimprimir")
     def imprimir_comanda(comanda_id):
         db = get_db()
         comanda = db.execute("""
@@ -268,7 +285,7 @@ def register_pagamento_routes(app):
         )
 
     @app.route("/imprimir/venda/<int:venda_id>")
-    @login_required
+    @any_permission_required("impressao.imprimir", "impressao.reimprimir")
     def imprimir_venda(venda_id):
         db = get_db()
         venda = db.execute("""
@@ -297,7 +314,7 @@ def register_pagamento_routes(app):
         )
 
     @app.route("/imprimir/mesa/<int:comanda_id>")
-    @login_required
+    @any_permission_required("impressao.imprimir", "impressao.reimprimir")
     def imprimir_mesa(comanda_id):
         db = get_db()
         comanda = db.execute("""
@@ -337,7 +354,7 @@ def register_pagamento_routes(app):
         )
 
     @app.route("/imprimir/parcial/<int:pagamento_id>")
-    @login_required
+    @any_permission_required("impressao.imprimir", "impressao.reimprimir")
     def imprimir_parcial(pagamento_id):
         db = get_db()
         pagamento = db.execute(

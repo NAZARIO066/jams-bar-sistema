@@ -1,18 +1,18 @@
 from flask import render_template, request, jsonify, session
 from database import get_db
-from auth import login_required, admin_required, log_auditoria
+from auth import log_auditoria, permission_required
 from services.fiado_service import calcular_status_fiado, recalcular_saldo_devedor
 
 
 def register_clientes_routes(app):
 
     @app.route("/clientes")
-    @login_required
+    @permission_required("clientes.acessar")
     def clientes():
         return render_template("clientes.html")
 
     @app.route("/api/clientes")
-    @login_required
+    @permission_required("clientes.acessar")
     def api_clientes_list():
         db = get_db()
         page = max(1, int(request.args.get("page", 1)))
@@ -48,7 +48,7 @@ def register_clientes_routes(app):
         return jsonify({"data": result, "total": total, "page": page, "per_page": per_page})
 
     @app.route("/api/fiados")
-    @login_required
+    @permission_required("clientes.acessar")
     def api_fiados_list():
         db = get_db()
         page = max(1, int(request.args.get("page", 1)))
@@ -91,7 +91,7 @@ def register_clientes_routes(app):
         return jsonify({"data": result, "total": total, "page": page, "per_page": per_page})
 
     @app.route("/api/clientes", methods=["POST"])
-    @admin_required
+    @permission_required("clientes.alterar")
     def api_cliente_create():
         db = get_db()
         d = request.json or {}
@@ -105,7 +105,7 @@ def register_clientes_routes(app):
         return jsonify({"ok": True, "id": cur.lastrowid})
 
     @app.route("/api/clientes/<int:cid>", methods=["PUT"])
-    @admin_required
+    @permission_required("clientes.alterar")
     def api_cliente_update(cid):
         db = get_db()
         d = request.json or {}
@@ -119,7 +119,7 @@ def register_clientes_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/clientes/<int:cid>", methods=["DELETE"])
-    @admin_required
+    @permission_required("clientes.alterar")
     def api_cliente_delete(cid):
         db = get_db()
         db.execute("UPDATE clientes SET ativo=0 WHERE id=?", (cid,))
@@ -128,7 +128,7 @@ def register_clientes_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/clientes/<int:cid>/fiado")
-    @login_required
+    @permission_required("clientes.acessar")
     def api_cliente_fiado(cid):
         db = get_db()
         cli = db.execute("SELECT * FROM clientes WHERE id=?", (cid,)).fetchone()
@@ -152,7 +152,7 @@ def register_clientes_routes(app):
         return jsonify({"cliente": dict(cli), "movimentacoes": lista})
 
     @app.route("/api/clientes/<int:cid>/pagamento", methods=["POST"])
-    @admin_required
+    @permission_required("clientes.alterar")
     def api_cliente_pagamento(cid):
         db = get_db()
         d = request.json or {}
@@ -186,7 +186,7 @@ def register_clientes_routes(app):
         return jsonify({"ok": True})
 
     @app.route("/api/clientes/buscar")
-    @login_required
+    @permission_required("clientes.acessar")
     def api_clientes_buscar():
         q = request.args.get("q", "").strip()
         db = get_db()
