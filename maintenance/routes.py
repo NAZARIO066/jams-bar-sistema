@@ -5,6 +5,7 @@ from maintenance.backup import (
     criar_backup, listar_backups, restaurar_backup, remover_backup,
     espaco_utilizado, obter_backup, importar_backup, contar_backups
 )
+from maintenance.legacy_firebird import importar_e_aplicar_datacaixa, status_runtime
 from maintenance.diagnostics import diagnosticar_banco, verificar_fks_orfas, estatisticas_banco, recalcular_fiados
 from maintenance.cleanup import (
     preview_limpeza, executar_limpeza, verificar_senha_admin,
@@ -30,6 +31,7 @@ def register_maintenance_routes(app):
             "manutencao_backup.html",
             backups=backups,
             total_backups=contar_backups(),
+            firebird=status_runtime(),
         )
 
     @app.route("/manutencao/banco")
@@ -85,18 +87,25 @@ def register_maintenance_routes(app):
     def api_manutencao_backup_importar():
         arquivo = request.files.get("arquivo")
         if not arquivo or not arquivo.filename:
-            return jsonify({"ok": False, "erro": "Selecione um arquivo .zip ou .db"}), 400
+            return jsonify({"ok": False, "erro": "Selecione um arquivo .zip, .db, .fbk ou .FDB"}), 400
         if request.content_length and request.content_length > 1024 * 1024 * 1024:
             return jsonify({"ok": False, "erro": "O arquivo excede o limite de 1 GB"}), 413
         uid = session.get("usuario_id")
         uname = session.get("usuario_nome")
-        resultado, erro = importar_backup(arquivo, arquivo.filename)
+        extensao = os.path.splitext(arquivo.filename)[1].lower()
+        if extensao in {".fbk", ".fdb"}:
+            resultado, erro = importar_e_aplicar_datacaixa(
+                arquivo, arquivo.filename, usuario_id=uid, usuario_nome=uname
+            )
+        else:
+            resultado, erro = importar_backup(arquivo, arquivo.filename)
         if erro:
             log_maintenance("Importação de backup", "erro", erro, uid, uname)
             return jsonify({"ok": False, "erro": erro}), 400
         log_maintenance(
             "Backup importado", "ok",
-            f"Arquivo: {resultado['nome']} | Registros: {resultado['registros']}",
+            f"Arquivo: {resultado['nome']} | Registros: {resultado['registros']}"
+            + (" | Datacaixa convertido e aplicado" if resultado.get("aplicado") else ""),
             uid, uname,
         )
         return jsonify({"ok": True, "backup": resultado})

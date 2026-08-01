@@ -56,6 +56,8 @@ _filter_secrets.py
 # Backups locais de banco (gerados pelo sistema)
 static/uploads/backups/
 data/backups/
+data/backups_codigo/
+data/firebird/
 
 # Uploads reais de usuários (não versionar dados reais)
 static/uploads/migration_tmp/

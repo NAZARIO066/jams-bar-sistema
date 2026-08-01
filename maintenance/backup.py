@@ -181,9 +181,10 @@ def _ler_meta(caminho):
         return {}
 
 
-def _criar_pacote(nome, descricao="", usuario_id=None, usuario_nome=None):
+def _criar_pacote(nome, descricao="", usuario_id=None, usuario_nome=None,
+                  db_origem=None, uploads_origem=None):
     _ensure_dir()
-    db = _db_path()
+    db = db_origem or _db_path()
     if not os.path.exists(db):
         return None, "Banco de dados não encontrado"
 
@@ -209,7 +210,7 @@ def _criar_pacote(nome, descricao="", usuario_id=None, usuario_nome=None):
                     "sha256": _sha256(snapshot),
                 })
 
-                uploads = _uploads_path()
+                uploads = uploads_origem if uploads_origem is not None else _uploads_path()
                 if os.path.isdir(uploads):
                     for raiz, dirs, arquivos in os.walk(uploads):
                         dirs.sort()
@@ -305,6 +306,23 @@ def criar_backup(descricao="", usuario_id=None, usuario_nome=None):
         descricao=descricao,
         usuario_id=usuario_id,
         usuario_nome=usuario_nome,
+    )
+
+
+def criar_backup_convertido(db_origem, uploads_origem, descricao="", usuario_id=None,
+                            usuario_nome=None, fonte_hash=None):
+    """Cria um pacote nativo validado a partir de uma conversão em staging."""
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    descricao_final = descricao.strip() or "Conversão de backup Datacaixa"
+    if fonte_hash:
+        descricao_final += f" | SHA-256: {fonte_hash}"
+    return _criar_pacote(
+        f"convertido_datacaixa_{ts}.zip",
+        descricao=descricao_final,
+        usuario_id=usuario_id,
+        usuario_nome=usuario_nome,
+        db_origem=db_origem,
+        uploads_origem=uploads_origem,
     )
 
 

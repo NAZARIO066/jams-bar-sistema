@@ -20,22 +20,6 @@ import fdb
 from werkzeug.security import generate_password_hash
 
 
-EXPECTED_SOURCE_COUNTS = {
-    "categorias": 9,
-    "produtos": 265,
-    "clientes": 81,
-    "vendas": 26058,
-    "itens_venda": 45520,
-    "creditos": 2356,
-    "compras": 1604,
-    "estoque_saidas": 440,
-    "funcionarios": 10,
-    "mesas": 40,
-    "caixas": 732,
-    "pedidos_abertos": 18,
-}
-
-
 def as_text(value) -> str:
     if value is None:
         return ""
@@ -223,8 +207,13 @@ def validate_source(data):
         "caixas": len(data["caixas"]),
         "pedidos_abertos": len(data["pedidos_abertos"]),
     }
-    if actual != EXPECTED_SOURCE_COUNTS:
-        raise RuntimeError(f"Contagens da fonte divergentes: esperado={EXPECTED_SOURCE_COUNTS}, atual={actual}")
+    # As contagens de julho servem apenas como referência de homologação.
+    # Um backup posterior necessariamente terá novas vendas e movimentações;
+    # recusá-lo por isso impediria justamente a atualização recorrente.
+    if not data.get("hotel"):
+        raise RuntimeError("A fonte Datacaixa não contém o cadastro da empresa (THOTEL).")
+    if not data.get("produtos"):
+        raise RuntimeError("A fonte Datacaixa não contém produtos para importar.")
 
     product_ids = {row["ID_PRODUTO"] for row in data["produtos"]}
     sale_ids = {row["ID_VENDA"] for row in data["vendas"]}
@@ -639,7 +628,20 @@ def import_into_sqlite(data, sqlite_path: Path):
         report["importados"]["movimentos_compras"] = len(data["compras_itens"])
         report["importados"]["movimentos_saidas_estoque"] = len(data["estoque_itens"])
         report["importados"]["pedidos_abertos_fonte"] = len(data["pedidos_abertos"])
-        report["fonte"] = EXPECTED_SOURCE_COUNTS.copy()
+        report["fonte"] = {
+            "categorias": len(data["categorias"]),
+            "produtos": len(data["produtos"]),
+            "clientes": len(data["clientes"]),
+            "vendas": len(data["vendas"]),
+            "itens_venda": len(data["itens_venda"]),
+            "creditos": len(data["creditos"]),
+            "compras": data["compras_count"],
+            "estoque_saidas": data["estoque_saidas_count"],
+            "funcionarios": len(data["funcionarios"]),
+            "mesas": len(data["mesas"]),
+            "caixas": len(data["caixas"]),
+            "pedidos_abertos": len(data["pedidos_abertos"]),
+        }
         report["avisos"].extend([
             f"{products_without_category} produtos permaneceram sem categoria porque a fonte não informa o grupo.",
             f"{products_zero_price} produtos vieram com preço zero.",
@@ -648,7 +650,7 @@ def import_into_sqlite(data, sqlite_path: Path):
             "O backup não contém cadastro real de fornecedores; contas a pagar permaneceu vazia.",
         ])
         audit_details = json.dumps({
-            "fonte": "DATACAIXA_TESTE.FDB", "importados": report["importados"],
+            "fonte": "Backup Firebird Datacaixa", "importados": report["importados"],
             "avisos": report["avisos"], "erros": report["erros"],
         }, ensure_ascii=False)
         conn.execute("""

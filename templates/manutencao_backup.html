@@ -36,16 +36,27 @@
         <span class="icon-shell"><i data-lucide="file-up"></i></span>
         <div>
           <h3 class="font-bold">Importar backup existente</h3>
-          <p class="text-sm text-muted">Aceita o pacote completo .zip e o formato antigo .db.</p>
+          <p class="text-sm text-muted">Aceita .zip, .db e backups do Datacaixa em .fbk ou .FDB.</p>
         </div>
       </div>
       <label class="form-label" for="backup-arquivo">Arquivo de backup</label>
       <div class="flex gap-3 flex-wrap">
-        <input id="backup-arquivo" type="file" accept=".zip,.db,application/zip" class="form-input flex-1" style="min-width:220px;">
+        <input id="backup-arquivo" type="file" accept=".zip,.db,.fbk,.fdb,application/zip" class="form-input flex-1" style="min-width:220px;">
         <button onclick="importarBackup()" class="btn btn-secondary" id="btn-importar-backup">
           <i data-lucide="upload"></i> Validar e importar
         </button>
       </div>
+      {% if not firebird.pronto %}
+      <div class="message message-warning mt-3">
+        <i data-lucide="wrench"></i>
+        <span>O conversor Datacaixa precisa ser ativado no servidor antes do primeiro arquivo .fbk/.FDB.</span>
+      </div>
+      {% else %}
+      <div class="message message-success mt-3">
+        <i data-lucide="shield-check"></i>
+        <span>Conversor Datacaixa pronto. A importação cria uma cópia de segurança antes de substituir os dados.</span>
+      </div>
+      {% endif %}
       <div id="backup-importar-status" class="mt-3 text-sm" role="status"></div>
     </section>{% endif %}
   </div>
@@ -185,20 +196,33 @@ async function importarBackup() {
   const btn = document.getElementById('btn-importar-backup');
   const status = document.getElementById('backup-importar-status');
   if (!input.files.length) {
-    status.innerHTML = statusHtml('error', 'Selecione um arquivo .zip ou .db.');
+    status.innerHTML = statusHtml('error', 'Selecione um arquivo .zip, .db, .fbk ou .FDB.');
     atualizarIcones();
     return;
   }
   const form = new FormData();
   form.append('arquivo', input.files[0]);
-  setButtonLoading(btn, true, 'Validando...');
-  status.innerHTML = statusHtml('loading', 'Verificando estrutura, assinaturas e integridade...');
+  const nomeArquivo = input.files[0].name.toLowerCase();
+  const legado = nomeArquivo.endsWith('.fbk') || nomeArquivo.endsWith('.fdb');
+  setButtonLoading(btn, true, legado ? 'Convertendo...' : 'Validando...');
+  status.innerHTML = statusHtml('loading', legado
+    ? 'Restaurando o Firebird, validando os dados e criando a cópia de segurança. Pode levar alguns minutos...'
+    : 'Verificando estrutura, assinaturas e integridade...');
   atualizarIcones();
   try {
     const r = await fetch('/api/manutencao/backup/importar', {method: 'POST', body: form});
     const d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.erro || 'Backup recusado');
-    status.innerHTML = statusHtml('success', `Importado com segurança: ${d.backup.registros} registros e ${d.backup.imagens} imagem(ns).`);
+    if (d.backup.aplicado) {
+      const f = d.backup.importados || {};
+      status.innerHTML = statusHtml('success',
+        `Datacaixa convertido e aplicado: ${f.produtos || 0} produtos, ${f.clientes || 0} clientes, ${f.vendas || 0} vendas e ${d.backup.imagens} imagem(ns).`);
+      if (d.backup.backup_seguranca) {
+        status.innerHTML += `<div class="text-muted mt-1">Cópia de segurança anterior: ${d.backup.backup_seguranca}</div>`;
+      }
+    } else {
+      status.innerHTML = statusHtml('success', `Importado com segurança: ${d.backup.registros} registros e ${d.backup.imagens} imagem(ns).`);
+    }
     atualizarIcones();
     setTimeout(() => location.reload(), 1400);
   } catch (e) {

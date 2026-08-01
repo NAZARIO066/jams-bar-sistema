@@ -1993,6 +1993,32 @@ class TestMaintenanceBackup:
         assert r.status_code == 400
         assert r.get_json()["ok"] is False
 
+    def test_importar_fbk_usa_conversor_datacaixa(self, client, monkeypatch):
+        self._login_admin(client)
+        chamado = {}
+
+        def converter(arquivo, nome, usuario_id=None, usuario_nome=None):
+            chamado["nome"] = nome
+            chamado["conteudo"] = arquivo.read()
+            return {
+                "nome": "convertido_datacaixa_teste.zip",
+                "integridade": "ok",
+                "registros": 10,
+                "imagens": 1,
+                "aplicado": True,
+                "importados": {"produtos": 2, "clientes": 3, "vendas": 4},
+            }, None
+
+        monkeypatch.setattr("maintenance.routes.importar_e_aplicar_datacaixa", converter)
+        r = client.post(
+            "/api/manutencao/backup/importar",
+            data={"arquivo": (io.BytesIO(b"backup-firebird"), "DATACAIXA.FBK")},
+            content_type="multipart/form-data",
+        )
+        assert r.status_code == 200
+        assert r.get_json()["backup"]["aplicado"] is True
+        assert chamado == {"nome": "DATACAIXA.FBK", "conteudo": b"backup-firebird"}
+
     def test_restauracao_completa_recupera_imagem(self, client):
         self._login_admin(client)
         uploads = app.config["BACKUP_UPLOADS_DIR"]
